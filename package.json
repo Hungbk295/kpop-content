@@ -1,0 +1,31 @@
+{
+  "name": "kpop-metrics",
+  "version": "1.0.0",
+  "description": "Crawl TikTok Studio and Facebook metrics and update Google Sheets",
+  "main": "tiktok.js",
+  "scripts": {
+    "start": "node tiktok.js",
+    "tiktok": "node tiktok.js",
+    "tiktok:crawl": "node tiktok-crawl.js",
+    "tiktok:diagnostic": "node tiktok-diagnostic.js",
+    "fb": "node facebook.js",
+    "fb:crawl": "node facebook.js --crawl",
+    "fb:debug": "node facebook.js --debug",
+    "fb:test": "node facebook.js --test",
+    "fb:import": "node facebook-import.js"
+  },
+  "keywords": [
+    "tiktok",
+    "facebook",
+    "crawler",
+    "metrics"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "csv-parse": "^6.1.0",
+    "googleapis": "^171.3.0",
+    "playwright": "^1.58.1"
+  }
+}

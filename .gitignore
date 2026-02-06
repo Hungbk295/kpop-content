@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Credentials (NEVER commit)
+credentials.json
+*.json.bak
+
+# Browser data (contains login session)
+browser-data/
+browser-data-fb/
+
+# Data backups
+data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
