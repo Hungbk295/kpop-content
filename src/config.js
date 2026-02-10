@@ -14,36 +14,32 @@ try {
 
 const path = require('path');
 
-// Runtime directory (browser profiles, data backups)
-const RUNTIME_DIR = process.env.RUNTIME_DIR || './.runtime';
-
 module.exports = {
     // TikTok Studio URL
     TIKTOK_STUDIO_URL: process.env.TIKTOK_STUDIO_URL || 'https://www.tiktok.com/tiktokstudio/content',
 
     // Browser user data directory (persistent login)
-    USER_DATA_DIR: path.join(RUNTIME_DIR, 'browser-data'),
+    USER_DATA_DIR: process.env.USER_DATA_DIR || './browser-data',
 
     // Google Sheets config for TikTok
     GOOGLE_SHEETS: {
         SPREADSHEET_ID: process.env.TIKTOK_SPREADSHEET_ID || '1XgAc0xgtYTq_jcFTbB_wL6ytoJkT7e4Hxu3G9IIJlr0',
         SHEET_NAME: process.env.TIKTOK_SHEET_NAME || 'Tiktok',
         // Column mapping (based on actual sheet structure)
-        // A=No, B=Title, C=Describe, D=Format, E=Channel, F=Date, G=Status, H=Link, I=View, J=Like, K=Comment, L=Share, M=Note
+        // A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Like, J=Comment, K=Share, L=Note
         COLUMNS: {
             NO: 'A',
             TITLE: 'B',
             DESCRIBE: 'C',
             FORMAT: 'D',
-            CHANNEL: 'E',
-            DATE: 'F',
-            STATUS: 'G',
-            LINK_TO_POST: 'H',
-            VIEW: 'I',
-            LIKE: 'J',
-            COMMENT: 'K',
-            SHARE: 'L',
-            NOTE: 'M'
+            DATE: 'E',
+            STATUS: 'F',
+            LINK_TO_POST: 'G',
+            VIEW: 'H',
+            LIKE: 'I',
+            COMMENT: 'J',
+            SHARE: 'K',
+            NOTE: 'L'
         },
         DATA_START_ROW: parseInt(process.env.TIKTOK_DATA_START_ROW, 10) || 3
     },
@@ -51,7 +47,7 @@ module.exports = {
     // Facebook config
     FACEBOOK: {
         CONTENT_LIBRARY_URL: process.env.FACEBOOK_CONTENT_LIBRARY_URL || 'https://www.facebook.com/professional_dashboard/content/content_library',
-        USER_DATA_DIR: path.join(RUNTIME_DIR, 'browser-data-fb'),
+        USER_DATA_DIR: process.env.FB_USER_DATA_DIR || './browser-data-fb',
 
         // Google Sheets config for Facebook
         SHEETS: {
@@ -80,9 +76,13 @@ module.exports = {
     // Credentials file path
     CREDENTIALS_PATH: process.env.GOOGLE_APPLICATION_CREDENTIALS || './credentials.json',
 
-    // Runtime directory
-    RUNTIME_DIR,
+    // AI API config (OpenAI-compatible endpoint)
+    AI_API: {
+        endpoint: process.env.AI_API_ENDPOINT || 'http://localhost:8045/v1/chat/completions',
+        apiKey: process.env.AI_API_KEY || 'sk-3e7fc5fd772041749dc409d0144f97a4',
+        model: process.env.AI_API_MODEL || 'claude-opus-4-5-thinking'
+    },
 
     // Data backup directory
-    DATA_DIR: path.join(RUNTIME_DIR, 'data')
+    DATA_DIR: process.env.DATA_DIR || './data'
 };

@@ -1,6 +1,7 @@
 const { FacebookCrawler } = require('./crawler');
 const { FacebookSheetsManager } = require('./sheets');
 const { parseExportCSV } = require('./csv-parser');
+const { processAllContent } = require('../shared/ai');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
@@ -32,18 +33,19 @@ async function main() {
 
     const crawler = new FacebookCrawler();
     let sheetsManager = null;
+    const totalSteps = 6;
 
     try {
         // Step 1: Initialize browser
-        console.log('Step 1/5: Initializing browser...');
+        console.log(`Step 1/${totalSteps}: Initializing browser...`);
         await crawler.init();
 
         // Step 2: Navigate to Facebook Content Library
-        console.log('\nStep 2/5: Navigating to Facebook Content Library...');
+        console.log(`\nStep 2/${totalSteps}: Navigating to Facebook Content Library...`);
         await crawler.navigateToContentLibrary();
 
         // Step 3: Export data using Facebook's export feature
-        console.log('\nStep 3/5: Using Export Data flow...');
+        console.log(`\nStep 3/${totalSteps}: Using Export Data flow...`);
         const csvPath = await withRetry(
             () => crawler.exportData(),
             2,
@@ -51,7 +53,7 @@ async function main() {
         );
 
         // Step 4: Parse the downloaded CSV
-        console.log(`\nStep 4/5: Parsing CSV: ${csvPath}`);
+        console.log(`\nStep 4/${totalSteps}: Parsing CSV: ${csvPath}`);
         const metrics = parseExportCSV(csvPath);
 
         if (metrics.length === 0) {
@@ -67,8 +69,12 @@ async function main() {
         fs.writeFileSync(backupFile, JSON.stringify(metrics, null, 2));
         console.log(`Backup saved to ${backupFile}`);
 
-        // Step 5: Update Google Sheets
-        console.log('\nStep 5/5: Syncing with Google Sheets...');
+        // Step 5: AI content processing (strip hashtags, split title/describe)
+        console.log(`\nStep 5/${totalSteps}: Processing content with AI...`);
+        await processAllContent(metrics);
+
+        // Step 6: Update Google Sheets
+        console.log(`\nStep 6/${totalSteps}: Syncing with Google Sheets...`);
         if (config.FACEBOOK.SHEETS.SPREADSHEET_ID) {
             sheetsManager = new FacebookSheetsManager();
             await sheetsManager.init();
@@ -136,6 +142,10 @@ async function importCSV(csvPath) {
             console.log('No posts found in CSV!');
             return;
         }
+
+        // AI content processing
+        console.log('\nProcessing content with AI...');
+        await processAllContent(metrics);
 
         // Update Google Sheets
         console.log('\nSyncing with Google Sheets...');

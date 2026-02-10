@@ -9,6 +9,7 @@ class FacebookSheetsManager {
         this.sheets = null;
         this.auth = null;
         this.sheetConfig = config.FACEBOOK.SHEETS;
+        this._sheetId = null;
     }
 
     async init() {
@@ -43,6 +44,43 @@ class FacebookSheetsManager {
 
         this.sheets = google.sheets({ version: 'v4', auth: this.auth });
         console.log('✅ Google Sheets API ready!');
+    }
+
+    async getSheetId() {
+        if (this._sheetId !== null) return this._sheetId;
+        const res = await this.sheets.spreadsheets.get({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            fields: 'sheets.properties'
+        });
+        const sheet = res.data.sheets.find(
+            s => s.properties.title === this.sheetConfig.SHEET_NAME
+        );
+        this._sheetId = sheet ? sheet.properties.sheetId : 0;
+        return this._sheetId;
+    }
+
+    async clearBoldFormatting(startRow, endRow) {
+        const sheetId = await this.getSheetId();
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            resource: {
+                requests: [{
+                    repeatCell: {
+                        range: {
+                            sheetId,
+                            startRowIndex: startRow - 1,
+                            endRowIndex: endRow
+                        },
+                        cell: {
+                            userEnteredFormat: {
+                                textFormat: { bold: false }
+                            }
+                        },
+                        fields: 'userEnteredFormat.textFormat.bold'
+                    }
+                }]
+            }
+        });
     }
 
     async readSheet(range) {
@@ -133,6 +171,18 @@ class FacebookSheetsManager {
         return null;
     }
 
+    // Format "MM/DD/YYYY HH:MM" → "d/m"
+    formatDate(dateStr) {
+        if (!dateStr) return '';
+        const match = dateStr.match(/^(\d{2})\/(\d{2})\/\d{4}/);
+        if (match) {
+            const month = parseInt(match[1], 10);
+            const day = parseInt(match[2], 10);
+            return `${day}/${month}`;
+        }
+        return dateStr;
+    }
+
     async updateMetrics(scrapedData) {
         const cols = this.sheetConfig.COLUMNS;
         const existingPosts = await this.getExistingPosts();
@@ -141,6 +191,21 @@ class FacebookSheetsManager {
         const newRows = [];
         let updatedCount = 0;
         let insertedCount = 0;
+
+        // Sort by date ascending (oldest first, newest at bottom)
+        // Facebook date format: "MM/DD/YYYY HH:MM"
+        scrapedData.sort((a, b) => {
+            const parseDate = (dateStr) => {
+                if (!dateStr) return 0;
+                const match = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+                if (!match) return 0;
+                return new Date(
+                    parseInt(match[3], 10), parseInt(match[1], 10) - 1, parseInt(match[2], 10),
+                    parseInt(match[4], 10), parseInt(match[5], 10)
+                ).getTime();
+            };
+            return parseDate(a.date) - parseDate(b.date);
+        });
 
         // Timestamp
         const now = new Date();
@@ -171,10 +236,10 @@ class FacebookSheetsManager {
                 // INSERT new row - use raw numbers
                 const rowData = [
                     '',                          // A: No
-                    post.title,                  // B: MAIN CONTENT/TITLE
-                    '',                          // C: DESCRIBE
+                    post.mainContent || post.title, // B: MAIN CONTENT/TITLE (AI-processed or raw)
+                    post.describe || '',          // C: DESCRIBE (AI-generated)
                     post.postType,               // D: FORMAT
-                    post.date,                   // E: DATE OF PUBLICATION
+                    this.formatDate(post.date),   // E: DATE OF PUBLICATION (d/m)
                     post.url || '',              // F: LINK TO POST
                     views,                       // G: VIEW (raw number)
                     impressions,                 // H: REACH (raw number)
@@ -200,6 +265,9 @@ class FacebookSheetsManager {
             console.log(`\n📝 Inserting ${newRows.length} new rows...`);
             await this.appendRows(newRows);
         }
+
+        // Clear bold formatting on all data rows
+        await this.clearBoldFormatting(this.sheetConfig.DATA_START_ROW, 1000);
 
         console.log('✅ Facebook sheet updated!');
         return { updatedCount, insertedCount };

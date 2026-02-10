@@ -1,5 +1,6 @@
 const { TikTokCrawler } = require('./crawler');
 const { GoogleSheetsManager } = require('./sheets');
+const { processAllContent } = require('../shared/ai');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
@@ -28,20 +29,22 @@ async function main() {
     console.log('   K-POP TikTok Metrics Crawler');
     console.log('═══════════════════════════════════════════\n');
 
+    const totalSteps = 5;
+
     const crawler = new TikTokCrawler();
     let sheetsManager = null;
 
     try {
         // Step 1: Initialize browser
-        console.log('📌 Step 1/4: Initializing browser...');
+        console.log(`📌 Step 1/${totalSteps}: Initializing browser...`);
         await crawler.init();
 
         // Step 2: Navigate to TikTok Studio
-        console.log('\n📌 Step 2/4: Navigating to TikTok Studio...');
+        console.log(`\n📌 Step 2/${totalSteps}: Navigating to TikTok Studio...`);
         await crawler.navigateToStudio();
 
         // Step 3: Scrape metrics (with retry)
-        console.log('\n📌 Step 3/4: Scraping metrics...');
+        console.log(`\n📌 Step 3/${totalSteps}: Scraping metrics...`);
         const metrics = await withRetry(
             () => crawler.scrapeMetrics(),
             2, // Max 2 retries
@@ -65,8 +68,12 @@ async function main() {
         fs.writeFileSync(backupFile, JSON.stringify(metrics, null, 2));
         console.log(`💾 Backup saved to ${backupFile}`);
 
-        // Step 4: Sync với Google Sheets (insert new + update existing)
-        console.log('\n📌 Step 4/4: Syncing with Google Sheets...');
+        // Step 4: AI content processing (strip hashtags, split title/describe)
+        console.log(`\n📌 Step 4/${totalSteps}: Processing content with AI...`);
+        await processAllContent(metrics);
+
+        // Step 5: Sync với Google Sheets (insert new + update existing)
+        console.log(`\n📌 Step 5/${totalSteps}: Syncing with Google Sheets...`);
         if (config.GOOGLE_SHEETS.SPREADSHEET_ID) {
             sheetsManager = new GoogleSheetsManager();
             await sheetsManager.init();

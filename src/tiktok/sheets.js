@@ -8,6 +8,7 @@ class GoogleSheetsManager {
     constructor() {
         this.sheets = null;
         this.auth = null;
+        this._sheetId = null;
     }
 
     async init() {
@@ -44,6 +45,43 @@ class GoogleSheetsManager {
 
         this.sheets = google.sheets({ version: 'v4', auth: this.auth });
         console.log('✅ Google Sheets API ready!');
+    }
+
+    async getSheetId() {
+        if (this._sheetId !== null) return this._sheetId;
+        const res = await this.sheets.spreadsheets.get({
+            spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
+            fields: 'sheets.properties'
+        });
+        const sheet = res.data.sheets.find(
+            s => s.properties.title === config.GOOGLE_SHEETS.SHEET_NAME
+        );
+        this._sheetId = sheet ? sheet.properties.sheetId : 0;
+        return this._sheetId;
+    }
+
+    async clearBoldFormatting(startRow, endRow) {
+        const sheetId = await this.getSheetId();
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
+            resource: {
+                requests: [{
+                    repeatCell: {
+                        range: {
+                            sheetId,
+                            startRowIndex: startRow - 1,
+                            endRowIndex: endRow
+                        },
+                        cell: {
+                            userEnteredFormat: {
+                                textFormat: { bold: false }
+                            }
+                        },
+                        fields: 'userEnteredFormat.textFormat.bold'
+                    }
+                }]
+            }
+        });
     }
 
     async readSheet(range) {
@@ -113,11 +151,13 @@ class GoogleSheetsManager {
                 const views = parseMetricValue(video.views);
                 const likes = parseMetricValue(video.likes);
                 const comments = parseMetricValue(video.comments);
+                const shares = parseMetricValue(video.shares);
 
                 // Save as raw numbers (no k/M formatting)
                 updates.push({ range: `${cols.VIEW}${row}`, value: views });
                 updates.push({ range: `${cols.LIKE}${row}`, value: likes });
                 updates.push({ range: `${cols.COMMENT}${row}`, value: comments });
+                updates.push({ range: `${cols.SHARE}${row}`, value: shares });
 
                 // Update NOTE with timestamp
                 const now = new Date();
@@ -160,30 +200,44 @@ class GoogleSheetsManager {
             return { insertedCount: 0 };
         }
 
-        console.log(`📝 Inserting ${newVideos.length} new videos...`);
+        // Sort by date ascending (oldest first, newest at bottom)
+        const monthOrder = {
+            'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
+            'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
+            'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+        };
+        const parseDate = (dateStr) => {
+            if (!dateStr) return 0;
+            const match = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
+            if (!match) return 0;
+            return monthOrder[match[1]] * 100 + parseInt(match[2], 10);
+        };
+        newVideos.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+
+        console.log(`📝 Inserting ${newVideos.length} new videos (oldest → newest)...`);
 
         // Find the next available row
         const lastRow = startRow + existingUrls.size;
 
-        // Format date from "Feb 5, 10:38 PM" to "05/02"
+        // Format date from "Feb 5, 10:38 PM" to "5/2" (day/month)
         const formatDate = (dateStr) => {
             if (!dateStr) return '';
             const months = {
-                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-                'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-                'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
+                'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
+                'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
             };
             const match = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
             if (match) {
+                const day = parseInt(match[2], 10);
                 const month = months[match[1]];
-                const day = match[2].padStart(2, '0');
                 return `${day}/${month}`;
             }
             return dateStr;
         };
 
         // Prepare rows data - use RAW NUMBERS
-        // Columns: A=No, B=Title, C=Describe, D=Format, E=Channel, F=Date, G=Status, H=Link, I=View, J=Like, K=Comment, L=Share, M=Note
+        // Columns: A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Like, J=Comment, K=Share, L=Note
         const rows = newVideos.map((video, index) => {
             const rowNum = lastRow + index;
             const now = new Date();
@@ -191,18 +245,17 @@ class GoogleSheetsManager {
 
             return [
                 rowNum - startRow + 1,              // A: No (số thứ tự)
-                video.title,                         // B: Title
-                '',                                  // C: Describe (empty)
+                video.mainContent || video.title,    // B: Title (AI-processed or raw)
+                video.describe || '',                // C: Describe (AI-generated)
                 'Video',                             // D: Format
-                'TikTok',                            // E: Channel
-                formatDate(video.date),              // F: Date
-                'Published',                         // G: Status
-                video.url,                           // H: Link
-                parseMetricValue(video.views),       // I: View (raw number)
-                parseMetricValue(video.likes),       // J: Like (raw number)
-                parseMetricValue(video.comments),    // K: Comment (raw number)
-                '',                                  // L: Share (empty - TikTok không có)
-                noteStr                              // M: Note
+                formatDate(video.date),              // E: Date
+                'Published',                         // F: Status
+                video.url,                           // G: Link
+                parseMetricValue(video.views),       // H: View (raw number)
+                parseMetricValue(video.likes),       // I: Like (raw number)
+                parseMetricValue(video.comments),    // J: Comment (raw number)
+                parseMetricValue(video.shares),      // K: Share (raw number)
+                noteStr                              // L: Note
             ];
         });
 
@@ -236,6 +289,9 @@ class GoogleSheetsManager {
 
         // Then, update all metrics (including newly inserted)
         const updateResult = await this.updateMetrics(scrapedData);
+
+        // Clear bold formatting on all data rows
+        await this.clearBoldFormatting(config.GOOGLE_SHEETS.DATA_START_ROW, 1000);
 
         return {
             insertedCount: insertResult.insertedCount,

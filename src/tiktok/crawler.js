@@ -131,6 +131,7 @@ const SCRAPE_SCRIPT = `
             const views = numbers[0] || '0';
             const likes = numbers[1] || '0';
             const comments = numbers[2] || '0';
+            const shares = numbers[3] || '0';
 
             // Check if pinned
             const isPinned = texts.some(t => t.toLowerCase().includes('pin')) ? 'Yes' : 'No';
@@ -142,6 +143,7 @@ const SCRAPE_SCRIPT = `
                     views,
                     likes,
                     comments,
+                    shares,
                     pinned: isPinned,
                     url
                 });

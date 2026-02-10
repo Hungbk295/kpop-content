@@ -9,6 +9,9 @@ credentials.json
 browser-data/
 browser-data-fb/
 
+# Runtime directory (browser profiles, data backups)
+.runtime/
+
 # Data backups
 data/
 
