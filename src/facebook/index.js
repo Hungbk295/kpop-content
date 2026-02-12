@@ -1,7 +1,8 @@
 const { FacebookCrawler } = require('./crawler');
 const { FacebookSheetsManager } = require('./sheets');
 const { parseExportCSV } = require('./csv-parser');
-const { processAllContent } = require('../shared/ai');
+const { compareAndMerge } = require('../shared/compare');
+const { SnapshotDB } = require('../shared/db');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
@@ -69,18 +70,31 @@ async function main() {
         fs.writeFileSync(backupFile, JSON.stringify(metrics, null, 2));
         console.log(`Backup saved to ${backupFile}`);
 
-        // Step 5: AI content processing (strip hashtags, split title/describe)
-        console.log(`\nStep 5/${totalSteps}: Processing content with AI...`);
-        await processAllContent(metrics);
-
-        // Step 6: Update Google Sheets
-        console.log(`\nStep 6/${totalSteps}: Syncing with Google Sheets...`);
+        // Step 5: Compare with DB snapshot and selectively apply AI
+        console.log(`\nStep 5/${totalSteps}: Compare & merge with DB snapshot...`);
+        let mergedData = metrics;
         if (config.FACEBOOK.SHEETS.SPREADSHEET_ID) {
             sheetsManager = new FacebookSheetsManager();
             await sheetsManager.init();
 
+            // Save current sheet state to DB
+            await sheetsManager.saveSnapshot();
+
+            // Read DB snapshot for comparison
+            const db = new SnapshotDB();
+            try {
+                const dbRows = db.getSnapshot('facebook');
+                mergedData = await compareAndMerge(dbRows, metrics, 'facebook');
+            } finally {
+                db.close();
+            }
+        }
+
+        // Step 6: Update Google Sheets
+        console.log(`\nStep 6/${totalSteps}: Syncing with Google Sheets...`);
+        if (sheetsManager) {
             const result = await withRetry(
-                () => sheetsManager.updateMetrics(metrics),
+                () => sheetsManager.updateMetrics(mergedData),
                 2,
                 2000
             );
@@ -143,16 +157,27 @@ async function importCSV(csvPath) {
             return;
         }
 
-        // AI content processing
-        console.log('\nProcessing content with AI...');
-        await processAllContent(metrics);
-
-        // Update Google Sheets
-        console.log('\nSyncing with Google Sheets...');
+        // Compare with DB snapshot and selectively apply AI
+        console.log('\nCompare & merge with DB snapshot...');
         const sheetsManager = new FacebookSheetsManager();
         await sheetsManager.init();
 
-        const result = await sheetsManager.updateMetrics(metrics);
+        // Save current sheet state to DB
+        await sheetsManager.saveSnapshot();
+
+        // Read DB snapshot for comparison
+        const db = new SnapshotDB();
+        let mergedData;
+        try {
+            const dbRows = db.getSnapshot('facebook');
+            mergedData = await compareAndMerge(dbRows, metrics, 'facebook');
+        } finally {
+            db.close();
+        }
+
+        // Update Google Sheets
+        console.log('\nSyncing with Google Sheets...');
+        const result = await sheetsManager.updateMetrics(mergedData);
 
         console.log('\n=======================================');
         console.log('   Summary');

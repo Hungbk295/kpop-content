@@ -1,6 +1,7 @@
 const { TikTokCrawler } = require('./crawler');
 const { GoogleSheetsManager } = require('./sheets');
-const { processAllContent } = require('../shared/ai');
+const { compareAndMerge } = require('../shared/compare');
+const { SnapshotDB } = require('../shared/db');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
@@ -68,18 +69,31 @@ async function main() {
         fs.writeFileSync(backupFile, JSON.stringify(metrics, null, 2));
         console.log(`💾 Backup saved to ${backupFile}`);
 
-        // Step 4: AI content processing (strip hashtags, split title/describe)
-        console.log(`\n📌 Step 4/${totalSteps}: Processing content with AI...`);
-        await processAllContent(metrics);
-
-        // Step 5: Sync với Google Sheets (insert new + update existing)
-        console.log(`\n📌 Step 5/${totalSteps}: Syncing with Google Sheets...`);
+        // Step 4: Compare with DB snapshot and selectively apply AI
+        console.log(`\n📌 Step 4/${totalSteps}: Compare & merge with DB snapshot...`);
+        let mergedData = metrics;
         if (config.GOOGLE_SHEETS.SPREADSHEET_ID) {
             sheetsManager = new GoogleSheetsManager();
             await sheetsManager.init();
 
+            // Save current sheet state to DB
+            await sheetsManager.saveSnapshot();
+
+            // Read DB snapshot for comparison
+            const db = new SnapshotDB();
+            try {
+                const dbRows = db.getSnapshot('tiktok');
+                mergedData = await compareAndMerge(dbRows, metrics, 'tiktok');
+            } finally {
+                db.close();
+            }
+        }
+
+        // Step 5: Sync with Google Sheets
+        console.log(`\n📌 Step 5/${totalSteps}: Syncing with Google Sheets...`);
+        if (sheetsManager) {
             const result = await withRetry(
-                () => sheetsManager.syncMetrics(metrics),
+                () => sheetsManager.syncMetrics(mergedData),
                 2,
                 2000
             );

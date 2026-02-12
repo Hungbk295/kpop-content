@@ -23,23 +23,24 @@ module.exports = {
 
     // Google Sheets config for TikTok
     GOOGLE_SHEETS: {
-        SPREADSHEET_ID: process.env.TIKTOK_SPREADSHEET_ID || '1XgAc0xgtYTq_jcFTbB_wL6ytoJkT7e4Hxu3G9IIJlr0',
-        SHEET_NAME: process.env.TIKTOK_SHEET_NAME || 'Tiktok',
+        SPREADSHEET_ID: process.env.TIKTOK_SPREADSHEET_ID || '1ejbA0DMJKpfO9yVuBAHXsZQoToIi_Eb4f4RW5nCTaLE',
+        SHEET_NAME: process.env.TIKTOK_SHEET_NAME || 'TIKTOK update',
         // Column mapping (based on actual sheet structure)
-        // A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Like, J=Comment, K=Share, L=Note
+        // A=No, B=Title, C=Describe, D=Format, E=Channel, F=Date, G=Status, H=Link, I=View, J=Like, K=Comment, L=Share, M=Note
         COLUMNS: {
             NO: 'A',
             TITLE: 'B',
             DESCRIBE: 'C',
             FORMAT: 'D',
-            DATE: 'E',
-            STATUS: 'F',
-            LINK_TO_POST: 'G',
-            VIEW: 'H',
-            LIKE: 'I',
-            COMMENT: 'J',
-            SHARE: 'K',
-            NOTE: 'L'
+            CHANNEL: 'E',
+            DATE: 'F',
+            STATUS: 'G',
+            LINK_TO_POST: 'H',
+            VIEW: 'I',
+            LIKE: 'J',
+            COMMENT: 'K',
+            SHARE: 'L',
+            NOTE: 'M'
         },
         DATA_START_ROW: parseInt(process.env.TIKTOK_DATA_START_ROW, 10) || 3
     },
@@ -51,19 +52,19 @@ module.exports = {
 
         // Google Sheets config for Facebook
         SHEETS: {
-            SPREADSHEET_ID: process.env.FB_SPREADSHEET_ID || '1XgAc0xgtYTq_jcFTbB_wL6ytoJkT7e4Hxu3G9IIJlr0',
-            SHEET_NAME: process.env.FB_SHEET_NAME || 'Facebook',
-            // Column mapping for Facebook
-            // A=No, B=Title, C=Describe, D=Format, E=Date, F=Link, G=View, H=Reach, I=Like, J=Comment, K=Share, L=Note
+            SPREADSHEET_ID: process.env.FB_SPREADSHEET_ID || '1ejbA0DMJKpfO9yVuBAHXsZQoToIi_Eb4f4RW5nCTaLE',
+            SHEET_NAME: process.env.FB_SHEET_NAME || 'Daily Update FB',
+            // Column mapping for Facebook (actual sheet structure)
+            // A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Like, J=Comment, K=Share, L=Note
             COLUMNS: {
                 NO: 'A',
                 TITLE: 'B',
                 DESCRIBE: 'C',
                 FORMAT: 'D',
                 DATE: 'E',
-                LINK_TO_POST: 'F',
-                VIEW: 'G',
-                REACH: 'H',
+                STATUS: 'F',
+                LINK_TO_POST: 'G',
+                VIEW: 'H',
                 LIKE: 'I',
                 COMMENT: 'J',
                 SHARE: 'K',
@@ -80,7 +81,7 @@ module.exports = {
     AI_API: {
         endpoint: process.env.AI_API_ENDPOINT || 'http://localhost:8045/v1/chat/completions',
         apiKey: process.env.AI_API_KEY || 'sk-3e7fc5fd772041749dc409d0144f97a4',
-        model: process.env.AI_API_MODEL || 'claude-opus-4-5-thinking'
+        model: process.env.AI_API_MODEL || 'claude-sonnet-4-5-20250929'
     },
 
     // Data backup directory

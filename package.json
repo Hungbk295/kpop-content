@@ -11,7 +11,12 @@
     "fb": "node src/facebook/index.js",
     "fb:crawl": "node src/facebook/crawler.js",
     "fb:import": "node src/facebook/index.js --import",
-    "fb:csv": "node src/facebook/index.js --csv"
+    "fb:csv": "node src/facebook/index.js --csv",
+    "snapshot": "node src/shared/db.js",
+    "snapshot:tiktok": "node src/shared/db.js tiktok",
+    "snapshot:fb": "node src/shared/db.js facebook",
+    "recall-ai:tiktok": "node scripts/recall-ai.js tiktok",
+    "recall-ai:fb": "node scripts/recall-ai.js facebook"
   },
   "keywords": [
     "tiktok",
@@ -23,6 +28,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "csv-parse": "^6.1.0",
     "googleapis": "^171.3.0",
     "playwright": "^1.58.1"

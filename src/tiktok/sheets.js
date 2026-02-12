@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../config');
 const { parseMetricValue, extractVideoId } = require('../shared/metrics');
+const { SnapshotDB } = require('../shared/db');
 
 class GoogleSheetsManager {
     constructor() {
@@ -84,6 +85,37 @@ class GoogleSheetsManager {
         });
     }
 
+    async formatNumberColumns(startRow, endRow) {
+        const sheetId = await this.getSheetId();
+        // I=8, J=9, K=10, L=11 (0-indexed): VIEW, LIKE, COMMENT, SHARE
+        const numberCols = [8, 9, 10, 11];
+        const requests = numberCols.map(col => ({
+            repeatCell: {
+                range: {
+                    sheetId,
+                    startRowIndex: startRow - 1,
+                    endRowIndex: endRow,
+                    startColumnIndex: col,
+                    endColumnIndex: col + 1
+                },
+                cell: {
+                    userEnteredFormat: {
+                        numberFormat: {
+                            type: 'NUMBER',
+                            pattern: '#,##0'
+                        }
+                    }
+                },
+                fields: 'userEnteredFormat.numberFormat'
+            }
+        }));
+
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
+            resource: { requests }
+        });
+    }
+
     async readSheet(range) {
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
@@ -146,6 +178,12 @@ class GoogleSheetsManager {
 
             if (existing) {
                 const row = existing.rowNum;
+
+                // Update title + describe (AI-processed)
+                if (video.mainContent) {
+                    updates.push({ range: `${cols.TITLE}${row}`, value: video.mainContent });
+                }
+                updates.push({ range: `${cols.DESCRIBE}${row}`, value: video.describe || '' });
 
                 // Parse values - store as RAW NUMBERS
                 const views = parseMetricValue(video.views);
@@ -220,6 +258,7 @@ class GoogleSheetsManager {
         const lastRow = startRow + existingUrls.size;
 
         // Format date from "Feb 5, 10:38 PM" to "5/2" (day/month)
+        // Prefix with ' to force Google Sheets to treat as text (not date serial)
         const formatDate = (dateStr) => {
             if (!dateStr) return '';
             const months = {
@@ -231,13 +270,13 @@ class GoogleSheetsManager {
             if (match) {
                 const day = parseInt(match[2], 10);
                 const month = months[match[1]];
-                return `${day}/${month}`;
+                return `'${day}/${month}`;
             }
             return dateStr;
         };
 
         // Prepare rows data - use RAW NUMBERS
-        // Columns: A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Like, J=Comment, K=Share, L=Note
+        // Columns: A=No, B=Title, C=Describe, D=Format, E=Channel, F=Date, G=Status, H=Link, I=View, J=Like, K=Comment, L=Share, M=Note
         const rows = newVideos.map((video, index) => {
             const rowNum = lastRow + index;
             const now = new Date();
@@ -248,14 +287,15 @@ class GoogleSheetsManager {
                 video.mainContent || video.title,    // B: Title (AI-processed or raw)
                 video.describe || '',                // C: Describe (AI-generated)
                 'Video',                             // D: Format
-                formatDate(video.date),              // E: Date
-                'Published',                         // F: Status
-                video.url,                           // G: Link
-                parseMetricValue(video.views),       // H: View (raw number)
-                parseMetricValue(video.likes),       // I: Like (raw number)
-                parseMetricValue(video.comments),    // J: Comment (raw number)
-                parseMetricValue(video.shares),      // K: Share (raw number)
-                noteStr                              // L: Note
+                'TikTok',                            // E: Channel
+                formatDate(video.date),              // F: Date
+                'Published',                         // G: Status
+                video.url,                           // H: Link
+                parseMetricValue(video.views),       // I: View (raw number)
+                parseMetricValue(video.likes),       // J: Like (raw number)
+                parseMetricValue(video.comments),    // K: Comment (raw number)
+                parseMetricValue(video.shares),      // L: Share (raw number)
+                noteStr                              // M: Note
             ];
         });
 
@@ -280,9 +320,29 @@ class GoogleSheetsManager {
         return { insertedCount: rows.length };
     }
 
+    // Save snapshot of current sheet data before any updates
+    async saveSnapshot() {
+        const startRow = config.GOOGLE_SHEETS.DATA_START_ROW;
+        const rows = await this.readSheet(`A${startRow}:L1000`);
+        if (rows.length === 0) {
+            console.log('💾 Snapshot: sheet is empty, skipping');
+            return;
+        }
+        const db = new SnapshotDB();
+        try {
+            const count = db.saveSnapshot('tiktok', rows, startRow);
+            console.log(`💾 Snapshot saved: ${count} TikTok rows`);
+        } finally {
+            db.close();
+        }
+    }
+
     // Combined: Update existing + Insert new
     async syncMetrics(scrapedData) {
         console.log('\n📊 Syncing metrics with sheet...');
+
+        // Save snapshot before modifying
+        await this.saveSnapshot();
 
         // First, insert new videos
         const insertResult = await this.insertNewVideos(scrapedData);
@@ -290,8 +350,9 @@ class GoogleSheetsManager {
         // Then, update all metrics (including newly inserted)
         const updateResult = await this.updateMetrics(scrapedData);
 
-        // Clear bold formatting on all data rows
+        // Clear bold formatting and format number columns
         await this.clearBoldFormatting(config.GOOGLE_SHEETS.DATA_START_ROW, 1000);
+        await this.formatNumberColumns(config.GOOGLE_SHEETS.DATA_START_ROW, 1000);
 
         return {
             insertedCount: insertResult.insertedCount,
