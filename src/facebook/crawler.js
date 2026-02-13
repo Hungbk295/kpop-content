@@ -17,7 +17,7 @@ class FacebookCrawler {
         console.log('User data dir:', userDataDir);
 
         this.context = await chromium.launchPersistentContext(userDataDir, {
-            headless: true,
+            headless: false,
             viewport: { width: 1400, height: 900 },
             args: [
                 '--disable-blink-features=AutomationControlled',
@@ -515,6 +515,56 @@ class FacebookCrawler {
         console.log(`Downloaded: ${downloadPath}`);
 
         return downloadPath;
+    }
+
+    async scrapeFollowerCount() {
+        console.log('📊 Scraping Facebook follower count...');
+
+        // Navigate to public page
+        const pageUrl = 'https://www.facebook.com/kpopnow.vn/';
+
+        console.log('Navigating to Facebook page...');
+        await this.page.goto(pageUrl, {
+            waitUntil: 'networkidle',
+            timeout: 60000
+        });
+
+        await this.page.waitForTimeout(3000);
+
+        // Use XPath to find followers link
+        const followerCount = await this.page.evaluate(() => {
+            // XPath: //a[contains(text(),'followers')]
+            const xpath = "//a[contains(text(),'followers')]";
+            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            const followerLink = result.singleNodeValue;
+
+            if (!followerLink) {
+                return null;
+            }
+
+            const text = followerLink.textContent.trim();
+            // Pattern: "209 Total followers" or "1.2K followers"
+
+            // Verify text contains "followers"
+            if (!text.toLowerCase().includes('followers')) {
+                return null;
+            }
+
+            // Extract number (support K, M, B suffix)
+            const match = text.match(/(\d+\.?\d*[KMB]?)/i);
+            if (match) {
+                return match[1];
+            }
+
+            return null;
+        });
+
+        if (!followerCount) {
+            throw new Error('Facebook follower count not found on page');
+        }
+
+        console.log(`✅ Facebook Followers: ${followerCount}`);
+        return followerCount;
     }
 }
 

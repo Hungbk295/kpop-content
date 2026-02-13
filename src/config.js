@@ -55,7 +55,7 @@ module.exports = {
             SPREADSHEET_ID: process.env.FB_SPREADSHEET_ID || '1ejbA0DMJKpfO9yVuBAHXsZQoToIi_Eb4f4RW5nCTaLE',
             SHEET_NAME: process.env.FB_SHEET_NAME || 'Daily Update FB',
             // Column mapping for Facebook (actual sheet structure)
-            // A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Like, J=Comment, K=Share, L=Note
+            // A=No, B=Title, C=Describe, D=Format, E=Date, F=Status, G=Link, H=View, I=Reach, J=Like, K=Comment, L=Share, M=Note
             COLUMNS: {
                 NO: 'A',
                 TITLE: 'B',
@@ -65,12 +65,19 @@ module.exports = {
                 STATUS: 'F',
                 LINK_TO_POST: 'G',
                 VIEW: 'H',
-                LIKE: 'I',
-                COMMENT: 'J',
-                SHARE: 'K',
-                NOTE: 'L'
+                REACH: 'I',
+                LIKE: 'J',
+                COMMENT: 'K',
+                SHARE: 'L',
+                NOTE: 'M'
             },
-            DATA_START_ROW: parseInt(process.env.FB_DATA_START_ROW, 10) || 3
+            DATA_START_ROW: parseInt(process.env.FB_DATA_START_ROW, 10) || 3,
+            // Additional tabs to sync metrics to (same column structure as main tab)
+            SYNC_TABS: [
+                'Promoting ZALO OA and MINI APP',
+                'JAN Online Event',
+                'Ambassador SS1'
+            ]
         }
     },
 
@@ -85,5 +92,68 @@ module.exports = {
     },
 
     // Data backup directory
-    DATA_DIR: process.env.DATA_DIR || './data'
+    DATA_DIR: process.env.DATA_DIR || './data',
+
+    // Selective share scraping configuration
+    SELECTIVE_SHARES: {
+        // Enable/disable feature (set to false to disable)
+        ENABLED: process.env.ENABLE_SELECTIVE_SHARES !== 'false' && process.env.ENABLE_SELECTIVE_SHARES !== '0',
+        // Minimum like growth percentage to trigger share scraping (default: 5%)
+        THRESHOLD_PERCENT: parseFloat(process.env.SELECTIVE_SHARES_THRESHOLD) || 5
+    },
+
+    // SNS Followers tracking config
+    SNS_FOLLOWERS: {
+        SPREADSHEET_ID: process.env.SNS_SPREADSHEET_ID || '1ejbA0DMJKpfO9yVuBAHXsZQoToIi_Eb4f4RW5nCTaLE',
+        SHEET_NAME: process.env.SNS_SHEET_NAME || 'SNS Followers',
+        COLUMNS: {
+            UPDATE_DATE: 'A',
+            FACEBOOK_FOLLOWERS: 'B',
+            FACEBOOK_GROWTH: 'C',
+            FACEBOOK_GROWTH_RATE: 'D',
+            // E reserved for future use or formulas
+            TIKTOK_FOLLOWERS: 'F',
+            TIKTOK_GROWTH: 'G',
+            TIKTOK_GROWTH_RATE: 'H',
+            TIKTOK_LIKES: 'I'
+        },
+        DATA_START_ROW: parseInt(process.env.SNS_DATA_START_ROW, 10) || 2
+    },
+
+    // Zalo config (reuses TikTok browser profile)
+    ZALO: {
+        // Reuse TikTok browser profile (user already logged in to Zalo there)
+        USER_DATA_DIR: process.env.USER_DATA_DIR || './browser-data',
+
+        // Google Sheets config for Zalo
+        SHEETS: {
+            SPREADSHEET_ID: process.env.ZALO_SPREADSHEET_ID || '175hqUyhsypAKeorVslqnUrqm5240nCvjlWtsJ1rdQpE',
+
+            // Zalo OA sheet config
+            OA: {
+                SHEET_NAME: process.env.ZALO_OA_SHEET_NAME || 'Zalo OA',
+                // TODO: Define columns based on user's sheet structure
+                COLUMNS: {},
+                DATA_START_ROW: parseInt(process.env.ZALO_OA_DATA_START_ROW, 10) || 3
+            },
+
+            // Zalo MiniApp sheet config
+            MINIAPP: {
+                SHEET_NAME: process.env.ZALO_MINIAPP_SHEET_NAME || '통계',
+                // Column mapping for MiniApp
+                // A=Time, B=DAU, C=DOD, D=Growth Rate, E=New User, F=Sessions, G=Avg Duration, H=Note
+                COLUMNS: {
+                    TIME: 'A',
+                    DAU: 'B',
+                    DOD: 'C',
+                    GROWTH_RATE: 'D',
+                    NEW_USER: 'E',
+                    SESSIONS: 'F',
+                    AVG_DURATION: 'G',
+                    NOTE: 'H'
+                },
+                DATA_START_ROW: parseInt(process.env.ZALO_MINIAPP_DATA_START_ROW, 10) || 10
+            }
+        }
+    }
 };

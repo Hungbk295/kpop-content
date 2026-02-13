@@ -3,6 +3,7 @@ const { FacebookSheetsManager } = require('./sheets');
 const { parseExportCSV } = require('./csv-parser');
 const { compareAndMerge } = require('../shared/compare');
 const { SnapshotDB } = require('../shared/db');
+const { initLogger } = require('../shared/logger');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
@@ -27,26 +28,29 @@ async function withRetry(fn, maxRetries = 3, delay = 2000) {
 }
 
 async function main() {
-    console.log('=======================================');
+    // Initialize logger - will save all console output to logs/facebook.txt
+    const logger = initLogger('facebook');
+
+    console.log('═══════════════════════════════════════════');
     console.log('   K-POP Facebook Metrics Crawler');
     console.log('   (Export Data Flow)');
-    console.log('=======================================\n');
+    console.log('═══════════════════════════════════════════\n');
 
     const crawler = new FacebookCrawler();
     let sheetsManager = null;
-    const totalSteps = 6;
+    const totalSteps = 7; // Updated: includes sync to additional tabs
 
     try {
         // Step 1: Initialize browser
-        console.log(`Step 1/${totalSteps}: Initializing browser...`);
+        console.log(`📌 Step 1/${totalSteps}: Initializing browser...`);
         await crawler.init();
 
         // Step 2: Navigate to Facebook Content Library
-        console.log(`\nStep 2/${totalSteps}: Navigating to Facebook Content Library...`);
+        console.log(`\n📌 Step 2/${totalSteps}: Navigating to Facebook Content Library...`);
         await crawler.navigateToContentLibrary();
 
         // Step 3: Export data using Facebook's export feature
-        console.log(`\nStep 3/${totalSteps}: Using Export Data flow...`);
+        console.log(`\n📌 Step 3/${totalSteps}: Using Export Data flow...`);
         const csvPath = await withRetry(
             () => crawler.exportData(),
             2,
@@ -54,11 +58,11 @@ async function main() {
         );
 
         // Step 4: Parse the downloaded CSV
-        console.log(`\nStep 4/${totalSteps}: Parsing CSV: ${csvPath}`);
+        console.log(`\n📌 Step 4/${totalSteps}: Parsing CSV: ${csvPath}`);
         const metrics = parseExportCSV(csvPath);
 
         if (metrics.length === 0) {
-            console.log('\nNo posts found in CSV!');
+            console.log('\n⚠️  No posts found in CSV!');
             return;
         }
 
@@ -68,10 +72,10 @@ async function main() {
         fs.mkdirSync(dataDir, { recursive: true });
         const backupFile = path.join(dataDir, `facebook_metrics_${timestamp}.json`);
         fs.writeFileSync(backupFile, JSON.stringify(metrics, null, 2));
-        console.log(`Backup saved to ${backupFile}`);
+        console.log(`💾 Backup saved to ${backupFile}`);
 
         // Step 5: Compare with DB snapshot and selectively apply AI
-        console.log(`\nStep 5/${totalSteps}: Compare & merge with DB snapshot...`);
+        console.log(`\n📌 Step 5/${totalSteps}: Compare & merge with DB snapshot...`);
         let mergedData = metrics;
         if (config.FACEBOOK.SHEETS.SPREADSHEET_ID) {
             sheetsManager = new FacebookSheetsManager();
@@ -90,8 +94,8 @@ async function main() {
             }
         }
 
-        // Step 6: Update Google Sheets
-        console.log(`\nStep 6/${totalSteps}: Syncing with Google Sheets...`);
+        // Step 6: Update main Google Sheet
+        console.log(`\n📌 Step 6/${totalSteps}: Syncing with Google Sheets (Main Tab)...`);
         if (sheetsManager) {
             const result = await withRetry(
                 () => sheetsManager.updateMetrics(mergedData),
@@ -99,14 +103,27 @@ async function main() {
                 2000
             );
 
-            console.log('\n=======================================');
+            // Step 7: Sync metrics to additional tabs
+            console.log(`\n📌 Step 7/${totalSteps}: Syncing to Additional Tabs...`);
+            try {
+                const syncResult = await sheetsManager.syncToAdditionalTabs();
+                result.syncedTabs = syncResult.syncedTabs;
+                result.syncUpdates = syncResult.totalUpdates;
+            } catch (error) {
+                console.error('⚠️  Failed to sync to additional tabs:', error.message);
+            }
+
+            console.log('\n═══════════════════════════════════════════');
             console.log('   Summary');
-            console.log('=======================================');
-            console.log(`Parsed: ${metrics.length} posts from CSV`);
-            console.log(`Inserted: ${result.insertedCount} new posts`);
-            console.log(`Updated: ${result.updatedCount} posts`);
+            console.log('═══════════════════════════════════════════');
+            console.log(`📊 Parsed: ${metrics.length} posts from CSV`);
+            console.log(`🆕 Inserted: ${result.insertedCount} new posts`);
+            console.log(`✅ Updated: ${result.updatedCount} posts`);
+            if (result.syncedTabs !== undefined) {
+                console.log(`🔄 Synced: ${result.syncedTabs} additional tabs (${result.syncUpdates} updates)`);
+            }
         } else {
-            console.log('\nGoogle Sheets not configured. Set FB_SPREADSHEET_ID in .env');
+            console.log('\n⚠️  Google Sheets not configured. Set FB_SPREADSHEET_ID in .env');
             console.log('Parsed data:');
             console.table(metrics.slice(0, 5).map(m => ({
                 title: m.title.substring(0, 50) + '...',
@@ -116,20 +133,20 @@ async function main() {
             })));
         }
 
-        console.log('\nDone!');
+        console.log('\n✅ Done!');
 
     } catch (error) {
-        console.error('\n=======================================');
-        console.error('ERROR');
-        console.error('=======================================');
+        console.error('\n═══════════════════════════════════════════');
+        console.error('❌ ERROR');
+        console.error('═══════════════════════════════════════════');
         console.error('Message:', error.message);
 
         if (error.message.includes('login')) {
-            console.error('\nTroubleshooting:');
+            console.error('\n💡 Troubleshooting:');
             console.error('   1. Make sure you are logged into Facebook');
             console.error('   2. Check if your session has expired');
         } else if (error.message.includes('timeout')) {
-            console.error('\nTroubleshooting:');
+            console.error('\n💡 Troubleshooting:');
             console.error('   1. Check your internet connection');
             console.error('   2. Facebook may be slow or blocked');
         }
@@ -138,27 +155,33 @@ async function main() {
         process.exit(1);
     } finally {
         await crawler.close();
+
+        // Restore console and finalize log
+        logger.restore();
     }
 }
 
 // Import CSV directly (for existing exports)
 async function importCSV(csvPath) {
-    console.log('=======================================');
+    // Initialize logger for CSV import
+    const logger = initLogger('facebook-import');
+
+    console.log('═══════════════════════════════════════════');
     console.log('   K-POP Facebook CSV Import');
-    console.log('=======================================\n');
+    console.log('═══════════════════════════════════════════\n');
 
     try {
         // Parse CSV
-        console.log(`Parsing CSV: ${csvPath}`);
+        console.log(`📄 Parsing CSV: ${csvPath}`);
         const metrics = parseExportCSV(csvPath);
 
         if (metrics.length === 0) {
-            console.log('No posts found in CSV!');
+            console.log('⚠️  No posts found in CSV!');
             return;
         }
 
         // Compare with DB snapshot and selectively apply AI
-        console.log('\nCompare & merge with DB snapshot...');
+        console.log('\n🔄 Compare & merge with DB snapshot...');
         const sheetsManager = new FacebookSheetsManager();
         await sheetsManager.init();
 
@@ -176,21 +199,37 @@ async function importCSV(csvPath) {
         }
 
         // Update Google Sheets
-        console.log('\nSyncing with Google Sheets...');
+        console.log('\n📊 Syncing with Google Sheets (Main Tab)...');
         const result = await sheetsManager.updateMetrics(mergedData);
 
-        console.log('\n=======================================');
-        console.log('   Summary');
-        console.log('=======================================');
-        console.log(`Parsed: ${metrics.length} posts from CSV`);
-        console.log(`Inserted: ${result.insertedCount} new posts`);
-        console.log(`Updated: ${result.updatedCount} posts`);
+        // Sync metrics to additional tabs
+        console.log('\n🔄 Syncing to Additional Tabs...');
+        try {
+            const syncResult = await sheetsManager.syncToAdditionalTabs();
+            result.syncedTabs = syncResult.syncedTabs;
+            result.syncUpdates = syncResult.totalUpdates;
+        } catch (error) {
+            console.error('⚠️  Failed to sync to additional tabs:', error.message);
+        }
 
-        console.log('\nDone!');
+        console.log('\n═══════════════════════════════════════════');
+        console.log('   Summary');
+        console.log('═══════════════════════════════════════════');
+        console.log(`📊 Parsed: ${metrics.length} posts from CSV`);
+        console.log(`🆕 Inserted: ${result.insertedCount} new posts`);
+        console.log(`✅ Updated: ${result.updatedCount} posts`);
+        if (result.syncedTabs !== undefined) {
+            console.log(`🔄 Synced: ${result.syncedTabs} additional tabs (${result.syncUpdates} updates)`);
+        }
+
+        console.log('\n✅ Done!');
 
     } catch (error) {
         console.error('Error:', error.message);
         process.exit(1);
+    } finally {
+        // Restore console and finalize log
+        logger.restore();
     }
 }
 

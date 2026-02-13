@@ -12,6 +12,8 @@
     "fb:crawl": "node src/facebook/crawler.js",
     "fb:import": "node src/facebook/index.js --import",
     "fb:csv": "node src/facebook/index.js --csv",
+    "sns:followers": "node src/sns/index.js",
+    "zalo": "node src/zalo/index.js",
     "snapshot": "node src/shared/db.js",
     "snapshot:tiktok": "node src/shared/db.js tiktok",
     "snapshot:fb": "node src/shared/db.js facebook",

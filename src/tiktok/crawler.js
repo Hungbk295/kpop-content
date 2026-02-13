@@ -208,13 +208,13 @@ class TikTokCrawler {
         console.log('📁 User data dir:', userDataDir);
 
         this.context = await chromium.launchPersistentContext(userDataDir, {
-            headless: true,
+            headless: false,
             viewport: { width: 1400, height: 900 },
             args: [
                 '--disable-blink-features=AutomationControlled',
             ]
         });
-
+        
         this.page = this.context.pages()[0] || await this.context.newPage();
 
         console.log('✅ Browser ready!');
@@ -341,6 +341,93 @@ class TikTokCrawler {
             await this.context.close();
             console.log('👋 Browser closed');
         }
+    }
+
+    async scrapeFollowerCount() {
+        console.log('📊 Scraping TikTok follower count...');
+
+        // Navigate to public profile page
+        const profileUrl = 'https://www.tiktok.com/@kpopnow.vn';
+
+        console.log('Navigating to TikTok profile...');
+        await this.page.goto(profileUrl, {
+            waitUntil: 'load',
+            timeout: 60000
+        });
+
+        await this.page.waitForTimeout(3000);
+
+        // Use XPath to find follower count element
+        const followerCount = await this.page.evaluate(() => {
+            // XPath: //*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[2]
+            const xpath = '//*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[2]';
+            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            const followerElement = result.singleNodeValue;
+
+            if (!followerElement) {
+                return null;
+            }
+
+            const text = followerElement.textContent.trim();
+            // Pattern: "1392Followers" or "1.2KFollowers"
+
+            // Verify text contains "Followers"
+            if (!text.includes('Followers')) {
+                return null;
+            }
+
+            // Extract number (support K, M, B suffix)
+            const match = text.match(/(\d+\.?\d*[KMB]?)/i);
+            if (match) {
+                return match[1];
+            }
+
+            return null;
+        });
+
+        if (!followerCount) {
+            throw new Error('TikTok follower count not found on page');
+        }
+
+        console.log(`✅ TikTok Followers: ${followerCount}`);
+        return followerCount;
+    }
+
+    async scrapeLikesCount() {
+        console.log('📊 Scraping TikTok likes count...');
+
+        // Assumes we're already on the profile page from scrapeFollowerCount()
+        await this.page.waitForTimeout(1000);
+
+        // Use XPath to find likes count element
+        const likesCount = await this.page.evaluate(() => {
+            // XPath: //*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[3]/strong
+            const xpath = '//*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[3]/strong';
+            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+            const likesElement = result.singleNodeValue;
+
+            if (!likesElement) {
+                return null;
+            }
+
+            const text = likesElement.textContent.trim();
+            // Pattern: "1392" or "1.2K"
+
+            // Extract number (support K, M, B suffix)
+            const match = text.match(/(\d+\.?\d*[KMB]?)/i);
+            if (match) {
+                return match[1];
+            }
+
+            return null;
+        });
+
+        if (!likesCount) {
+            throw new Error('TikTok likes count not found on page');
+        }
+
+        console.log(`✅ TikTok Likes: ${likesCount}`);
+        return likesCount;
     }
 }
 

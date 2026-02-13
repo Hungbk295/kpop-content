@@ -115,10 +115,13 @@ class FacebookSheetsManager {
         });
     }
 
-    async readSheet(range) {
+    async readSheet(range, sheetName = null) {
+        // Use provided sheetName or default to main sheet
+        const targetSheet = sheetName || this.sheetConfig.SHEET_NAME;
+
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!${range}`
+            range: `${targetSheet}!${range}`
         });
 
         return response.data.values || [];
@@ -250,6 +253,13 @@ class FacebookSheetsManager {
         const dateStr = `Update ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
 
         for (const post of scrapedData) {
+            // IMPORTANT: Only process existing posts (from DB snapshot)
+            // Skip new posts to avoid duplicates
+            if (!post._isExisting) {
+                console.log(`⏭️  Skip new post (not in snapshot): ${post.title?.substring(0, 50) || post.url}...`);
+                continue;
+            }
+
             const existing = this.findMatchingRow(post, existingPosts);
 
             // Parse values - store as RAW NUMBERS
@@ -272,7 +282,12 @@ class FacebookSheetsManager {
                 }
                 updates.push({ range: `${cols.DESCRIBE}${row}`, value: post.describe || '' });
 
+                // Update metrics - H=View, I=Reach, J=Like, K=Comment, L=Share
                 updates.push({ range: `${cols.VIEW}${row}`, value: views });
+                if (cols.REACH && post.impressions) {
+                    const reach = parseMetricValue(post.impressions);
+                    updates.push({ range: `${cols.REACH}${row}`, value: reach });
+                }
                 updates.push({ range: `${cols.LIKE}${row}`, value: engagement });
                 updates.push({ range: `${cols.COMMENT}${row}`, value: comments });
                 updates.push({ range: `${cols.SHARE}${row}`, value: shares });
@@ -281,28 +296,9 @@ class FacebookSheetsManager {
                 updatedCount++;
                 console.log(`✅ Update Row ${row}: ${post.title.substring(0, 40)}...`);
             } else {
-                // Calculate next row number for new posts
-                const nextRowNum = this.sheetConfig.DATA_START_ROW + existingPosts.size + newRows.length;
-                const rowNumber = nextRowNum - this.sheetConfig.DATA_START_ROW + 1;
-
-                // INSERT new row - use raw numbers
-                const rowData = [
-                    rowNumber,                   // A: No (số thứ tự)
-                    post.mainContent || post.title, // B: MAIN CONTENT/TITLE (AI-processed or raw)
-                    post.describe || '',          // C: DESCRIBE (AI-generated)
-                    post.postType,               // D: FORMAT
-                    this.formatDate(post.date),   // E: DATE OF PUBLICATION (d/m)
-                    'Published',                 // F: STATUS
-                    post.url || '',              // G: LINK TO POST
-                    views,                       // H: VIEW (raw number)
-                    engagement,                  // I: LIKE (raw number)
-                    comments,                    // J: COMMENT (raw number)
-                    shares,                      // K: SHARE (raw number)
-                    dateStr                      // L: NOTE
-                ];
-                newRows.push(rowData);
-                insertedCount++;
-                console.log(`➕ Insert: ${post.title.substring(0, 50)}...`);
+                // Post exists in snapshot but not found in sheet
+                // This can happen if row was manually deleted or URL doesn't match
+                console.log(`⚠️  Skip - in snapshot but not found in sheet: ${post.title?.substring(0, 50) || post.url}`);
             }
         }
 
@@ -312,21 +308,8 @@ class FacebookSheetsManager {
             await this.updateCells(updates);
         }
 
-        // Append new rows (sort by date ascending: oldest first)
-        if (newRows.length > 0) {
-            newRows.sort((a, b) => {
-                const parseDate = (dateStr) => {
-                    if (!dateStr) return 0;
-                    // Date is in column E (index 4), formatted as 'd/m with leading '
-                    const match = String(dateStr).replace(/^'/, '').match(/^(\d+)\/(\d+)/);
-                    if (!match) return 0;
-                    return parseInt(match[2], 10) * 100 + parseInt(match[1], 10);
-                };
-                return parseDate(a[4]) - parseDate(b[4]);
-            });
-            console.log(`\n📝 Inserting ${newRows.length} new rows...`);
-            await this.appendRows(newRows);
-        }
+        // NOTE: newRows array is no longer used - we only UPDATE existing rows, never INSERT new ones
+        // This prevents duplicate rows when re-running the crawler
 
         // Clear bold formatting and format number columns
         await this.clearBoldFormatting(this.sheetConfig.DATA_START_ROW, 1000);
@@ -346,6 +329,137 @@ class FacebookSheetsManager {
                 values: rows
             }
         });
+    }
+
+    async syncToAdditionalTabs() {
+        const syncTabs = this.sheetConfig.SYNC_TABS || [];
+        if (syncTabs.length === 0) {
+            console.log('📋 No additional tabs to sync');
+            return { syncedTabs: 0, totalUpdates: 0 };
+        }
+
+        console.log(`\n🔄 Syncing metrics to ${syncTabs.length} additional tabs...`);
+
+        // Read metrics from main sheet (Daily Update FB)
+        const cols = this.sheetConfig.COLUMNS;
+        const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
+
+        // IMPORTANT: Read each column separately to avoid column I (REACH) offset issue
+        // Daily Update FB: G=Link, H=View, I=Reach (skip), J=Like, K=Comment, L=Share
+        const [urlData, viewData, likeData, commentData, shareData] = await Promise.all([
+            this.readSheet(`${cols.LINK_TO_POST}${DATA_START_ROW}:${cols.LINK_TO_POST}1000`),
+            this.readSheet(`${cols.VIEW}${DATA_START_ROW}:${cols.VIEW}1000`),
+            this.readSheet(`${cols.LIKE}${DATA_START_ROW}:${cols.LIKE}1000`),
+            this.readSheet(`${cols.COMMENT}${DATA_START_ROW}:${cols.COMMENT}1000`),
+            this.readSheet(`${cols.SHARE}${DATA_START_ROW}:${cols.SHARE}1000`)
+        ]);
+
+        // Build lookup map: postId/url -> metrics
+        const metricsMap = new Map();
+        urlData.forEach((row, index) => {
+            const url = row[0];
+            if (!url) return;
+
+            const metrics = {
+                view: parseMetricValue(viewData[index]?.[0]) || 0,
+                like: parseMetricValue(likeData[index]?.[0]) || 0,
+                comment: parseMetricValue(commentData[index]?.[0]) || 0,
+                share: parseMetricValue(shareData[index]?.[0]) || 0
+            };
+
+            // Store by URL
+            metricsMap.set(url, metrics);
+
+            // Also store by extracted postId for flexible matching
+            const postId = extractPostId(url);
+            if (postId) {
+                metricsMap.set(postId, metrics);
+            }
+        });
+
+        console.log(`📊 Loaded ${metricsMap.size} lookup entries (URLs + postIds) from Daily Update FB`);
+
+        let syncedTabs = 0;
+        let totalUpdates = 0;
+
+        // Sync to each additional tab
+        for (const tabName of syncTabs) {
+            try {
+                console.log(`\n  📋 Syncing to "${tabName}"...`);
+
+                // Read LINK_TO_POST column from sync tab
+                // Note: Sync tabs have CHANNEL column (E), so LINK_TO_POST is H instead of G
+                const syncLinkColumn = 'H'; // LINK_TO_POST in sync tabs
+                const syncRange = `${syncLinkColumn}${DATA_START_ROW}:${syncLinkColumn}1000`;
+                const syncData = await this.readSheet(syncRange, tabName);
+
+                console.log(`    📝 Tab has ${syncData.length} rows`);
+                if (syncData.length > 0) {
+                    console.log(`    🔍 Sample URLs from tab:`, syncData.slice(0, 3).map(r => r[0]));
+                }
+
+                const updates = [];
+                let matchCount = 0;
+
+                // Timestamp for NOTE column
+                const now = new Date();
+                const dateStr = `Update ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+
+                syncData.forEach((row, index) => {
+                    const url = row[0];
+                    if (!url) return;
+
+                    const rowNum = DATA_START_ROW + index;
+
+                    // Try to find metrics by URL or postId
+                    let metrics = metricsMap.get(url);
+                    if (!metrics) {
+                        const postId = extractPostId(url);
+                        if (postId) {
+                            metrics = metricsMap.get(postId);
+                        }
+                    }
+
+                    if (metrics) {
+                        // Update metrics columns for sync tabs
+                        // Sync tabs: I=View, J=Reach, K=Like, L=Comment, M=Share, N=Note
+                        updates.push({ range: `${tabName}!I${rowNum}`, value: metrics.view });
+                        updates.push({ range: `${tabName}!K${rowNum}`, value: metrics.like });
+                        updates.push({ range: `${tabName}!L${rowNum}`, value: metrics.comment });
+                        updates.push({ range: `${tabName}!M${rowNum}`, value: metrics.share });
+                        updates.push({ range: `${tabName}!N${rowNum}`, value: dateStr });
+                        matchCount++;
+                    }
+                });
+
+                if (updates.length > 0) {
+                    // Batch update
+                    const data = updates.map(u => ({
+                        range: u.range,
+                        values: [[u.value]]
+                    }));
+
+                    await this.sheets.spreadsheets.values.batchUpdate({
+                        spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+                        resource: {
+                            valueInputOption: 'USER_ENTERED',
+                            data: data
+                        }
+                    });
+
+                    console.log(`  ✅ Updated ${matchCount} rows in "${tabName}"`);
+                    totalUpdates += matchCount;
+                    syncedTabs++;
+                } else {
+                    console.log(`  ⚠️  No matches found in "${tabName}"`);
+                }
+            } catch (error) {
+                console.error(`  ❌ Failed to sync "${tabName}":`, error.message);
+            }
+        }
+
+        console.log(`\n✅ Sync complete: ${syncedTabs}/${syncTabs.length} tabs, ${totalUpdates} total updates`);
+        return { syncedTabs, totalUpdates };
     }
 }
 

@@ -195,7 +195,8 @@ class GoogleSheetsManager {
                 updates.push({ range: `${cols.VIEW}${row}`, value: views });
                 updates.push({ range: `${cols.LIKE}${row}`, value: likes });
                 updates.push({ range: `${cols.COMMENT}${row}`, value: comments });
-                updates.push({ range: `${cols.SHARE}${row}`, value: shares });
+                // Skip share - Step 6 updates only videos with ≥5% like growth (see scrapeSelectiveShares)
+                // updates.push({ range: `${cols.SHARE}${row}`, value: shares });
 
                 // Update NOTE with timestamp
                 const now = new Date();
@@ -294,7 +295,7 @@ class GoogleSheetsManager {
                 parseMetricValue(video.views),       // I: View (raw number)
                 parseMetricValue(video.likes),       // J: Like (raw number)
                 parseMetricValue(video.comments),    // K: Comment (raw number)
-                parseMetricValue(video.shares),      // L: Share (raw number)
+                0,                                   // L: Share (placeholder - will be updated selectively)
                 noteStr                              // M: Note
             ];
         });

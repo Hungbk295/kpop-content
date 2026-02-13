@@ -97,10 +97,11 @@ async function compareAndMerge(dbRows, crawledData, platform) {
 
     const merged = [...existing, ...newPosts];
 
-    // Clean up internal properties
+    // Clean up internal properties (keep _isExisting for sheet update logic)
     for (const post of merged) {
         delete post._dbRow;
-        delete post._isExisting;
+        // IMPORTANT: Keep _isExisting flag so updateMetrics knows which are existing vs new
+        // delete post._isExisting;
     }
 
     console.log(`  ✅ Merged: ${existing.length} existing + ${newPosts.length} new = ${merged.length} total`);

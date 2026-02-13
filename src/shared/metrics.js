@@ -55,19 +55,27 @@ function extractPostId(url) {
     let match = url.match(/posts\/(pfbid[a-zA-Z0-9]+)/);
     if (match) return match[1];
 
-    // Pattern 2: /reel/123456789
+    // Pattern 2: /photo.php?fbid=... (from CSV exports)
+    match = url.match(/photo\.php\?fbid=(\d+)/);
+    if (match) return match[1];
+
+    // Pattern 3: /share/p/... (new format)
+    match = url.match(/share\/p\/([a-zA-Z0-9]+)/);
+    if (match) return match[1];
+
+    // Pattern 4: /reel/123456789
     match = url.match(/reel\/(\d+)/);
     if (match) return match[1];
 
-    // Pattern 3: /watch?v=123456789
+    // Pattern 5: /watch?v=123456789
     match = url.match(/watch\?v=(\d+)/);
     if (match) return match[1];
 
-    // Pattern 4: /videos/123456789
+    // Pattern 6: /videos/123456789
     match = url.match(/videos\/(\d+)/);
     if (match) return match[1];
 
-    // Pattern 5: story_fbid in query string
+    // Pattern 7: story_fbid in query string
     match = url.match(/story_fbid=(\d+)/);
     if (match) return match[1];
 
