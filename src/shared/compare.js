@@ -1,9 +1,8 @@
 /**
  * Compare crawled data with DB snapshot and merge intelligently.
  *
- * Posts WITHOUT title in DB → send to AI for title + describe generation
- * Posts WITH title in DB    → only update metrics, keep existing title + describe
- * New posts (not in DB)     → send to AI, append at end sorted by date
+ * Posts with URL in snapshot → Skip AI, only update metrics (keep existing title + describe)
+ * Posts with URL NOT in snapshot → Send to AI for title + describe generation
  */
 
 const { extractVideoId, extractPostId } = require('./metrics');
@@ -57,23 +56,24 @@ async function compareAndMerge(dbRows, crawledData, platform) {
         const postId = extractId(post.url, platform);
         const dbRow = postId ? dbMap.get(postId) : null;
 
-        if (dbRow && dbRow.title?.trim()) {
-            // Existing post WITH title → keep title+describe, only update metrics
+        // Check if we can skip AI (Must exist AND have a description)
+        if (dbRow && dbRow.describe && dbRow.describe.trim().length > 0) {
+            // URL exists + has describe → Skip AI, only update metrics
             post._dbRow = dbRow;
             post._isExisting = true;
-            post.mainContent = dbRow.title;
-            post.describe = dbRow.describe || '';
+            post.mainContent = dbRow.title || post.title;
+            post.describe = dbRow.describe;
             hasTitle.push(post);
         } else {
-            // No title in DB OR brand new post → needs AI
-            post._dbRow = dbRow || null;
+            // New post OR existing post with empty describe → Run AI
+            post._dbRow = dbRow; // Persist DB info if exists (for sorting/merging)
             post._isExisting = !!dbRow;
             needsAI.push(post);
         }
     }
 
-    console.log(`  📋 Has title (metrics only): ${hasTitle.length}`);
-    console.log(`  🤖 Needs AI (no title / new): ${needsAI.length}`);
+    console.log(`  📋 Existing URLs (skip AI, metrics only): ${hasTitle.length}`);
+    console.log(`  🤖 New URLs (use AI for title+describe): ${needsAI.length}`);
 
     // Process items that need AI
     if (needsAI.length > 0) {

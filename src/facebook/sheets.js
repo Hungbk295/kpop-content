@@ -146,13 +146,19 @@ class FacebookSheetsManager {
         const cols = this.sheetConfig.COLUMNS;
         const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
 
-        // Read both URL column (G) and Title column (B) for matching
+        // Read URL, Title, Format, Date, Status columns for matching and checking
         const urlRange = `${cols.LINK_TO_POST}${DATA_START_ROW}:${cols.LINK_TO_POST}1000`;
         const titleRange = `${cols.TITLE}${DATA_START_ROW}:${cols.TITLE}1000`;
+        const formatRange = `${cols.FORMAT}${DATA_START_ROW}:${cols.FORMAT}1000`;
+        const dateRange = `${cols.DATE}${DATA_START_ROW}:${cols.DATE}1000`;
+        const statusRange = `${cols.STATUS}${DATA_START_ROW}:${cols.STATUS}1000`;
 
-        const [urlRows, titleRows] = await Promise.all([
+        const [urlRows, titleRows, formatRows, dateRows, statusRows] = await Promise.all([
             this.readSheet(urlRange),
-            this.readSheet(titleRange)
+            this.readSheet(titleRange),
+            this.readSheet(formatRange),
+            this.readSheet(dateRange),
+            this.readSheet(statusRange)
         ]);
 
         const postMap = new Map();
@@ -163,10 +169,17 @@ class FacebookSheetsManager {
             if (url) {
                 const postId = extractPostId(url);
                 const rowNum = DATA_START_ROW + index;
+                const data = {
+                    url,
+                    rowNum,
+                    format: formatRows[index]?.[0] || '',
+                    date: dateRows[index]?.[0] || '',
+                    status: statusRows[index]?.[0] || ''
+                };
                 if (postId) {
-                    postMap.set(`url:${postId}`, { url, rowNum });
+                    postMap.set(`url:${postId}`, data);
                 }
-                postMap.set(`url:${url}`, { url, rowNum });
+                postMap.set(`url:${url}`, data);
             }
         });
 
@@ -176,7 +189,14 @@ class FacebookSheetsManager {
             if (title) {
                 const rowNum = DATA_START_ROW + index;
                 const titleKey = title.substring(0, 80).toLowerCase().trim();
-                postMap.set(`title:${titleKey}`, { title, rowNum });
+                const data = {
+                    title,
+                    rowNum,
+                    format: formatRows[index]?.[0] || '',
+                    date: dateRows[index]?.[0] || '',
+                    status: statusRows[index]?.[0] || ''
+                };
+                postMap.set(`title:${titleKey}`, data);
             }
         });
 
@@ -204,6 +224,115 @@ class FacebookSheetsManager {
         }
 
         return null;
+    }
+
+    /**
+     * Format publish date to "MM/DD" format (e.g., "02/12", "01/19")
+     * This format sorts correctly as text (newest first when sorted descending)
+     */
+    formatPublishDate(dateStr) {
+        if (!dateStr) return '';
+
+        // If already in "MM/DD" format with leading zeros, return as-is
+        if (/^\d{2}\/\d{2}$/.test(dateStr)) {
+            return dateStr;
+        }
+
+        // FIRST: Try to parse "DD/M" or "D/M" format manually (prioritize this!)
+        const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
+        if (match) {
+            const day = match[1].padStart(2, '0');
+            const month = match[2].padStart(2, '0');
+            return `${month}/${day}`;
+        }
+
+        // SECOND: Try to parse full timestamp formats like "01/19/2026 01:11"
+        try {
+            if (dateStr.includes(' ') || dateStr.includes('-') || dateStr.length > 6) {
+                const date = new Date(dateStr);
+                if (!isNaN(date.getTime())) {
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    return `${month}/${day}`;
+                }
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+
+        // Return original if can't parse
+        return dateStr;
+    }
+
+    /**
+     * Sort sheet by DATE OF PUBLICATION column (newest first)
+     */
+    async sortByDate() {
+        const sheetId = await this.getSheetId();
+        const cols = this.sheetConfig.COLUMNS;
+        const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
+
+        // Get column index for DATE (E column = index 4)
+        const dateColIndex = cols.DATE.charCodeAt(0) - 'A'.charCodeAt(0);
+
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            resource: {
+                requests: [{
+                    sortRange: {
+                        range: {
+                            sheetId: sheetId,
+                            startRowIndex: DATA_START_ROW - 1, // 0-indexed, so row 3 = index 2
+                            startColumnIndex: 0, // Column A
+                            endColumnIndex: 13 // Up to column M
+                        },
+                        sortSpecs: [{
+                            dimensionIndex: dateColIndex,
+                            sortOrder: 'DESCENDING' // Newest first
+                        }]
+                    }
+                }]
+            }
+        });
+
+        console.log('✅ Sorted by DATE (newest first)');
+    }
+
+    /**
+     * Renumber the "No." column (A) after sorting
+     * Oldest post = 1, newest post = max number
+     * Since sheet is sorted newest first, row 2 gets highest number
+     */
+    async renumberRows() {
+        const cols = this.sheetConfig.COLUMNS;
+        const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
+
+        // Count total data rows by reading column B (TITLE) until empty
+        const titleData = await this.readSheet(`${cols.TITLE}${DATA_START_ROW}:${cols.TITLE}1000`);
+        const totalRows = titleData.filter(row => row[0]?.trim()).length;
+
+        if (totalRows === 0) {
+            console.log('⚠️  No data rows to renumber');
+            return;
+        }
+
+        console.log(`\n🔢 Renumbering ${totalRows} rows (oldest=1, newest=${totalRows})...`);
+
+        // Generate numbers in reverse: first row (newest) gets highest number
+        const numbers = [];
+        for (let i = 0; i < totalRows; i++) {
+            numbers.push([totalRows - i]); // Row 0 = totalRows, Row 1 = totalRows-1, etc.
+        }
+
+        // Batch update column A
+        await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            range: `${this.sheetConfig.SHEET_NAME}!A${DATA_START_ROW}:A${DATA_START_ROW + totalRows - 1}`,
+            valueInputOption: 'RAW',
+            resource: { values: numbers }
+        });
+
+        console.log(`✅ Renumbered: Row ${DATA_START_ROW} (newest) = ${totalRows}, Row ${DATA_START_ROW + totalRows - 1} (oldest) = 1`);
     }
 
     // Format "MM/DD/YYYY HH:MM" → "d/m"
@@ -253,13 +382,6 @@ class FacebookSheetsManager {
         const dateStr = `Update ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
 
         for (const post of scrapedData) {
-            // IMPORTANT: Only process existing posts (from DB snapshot)
-            // Skip new posts to avoid duplicates
-            if (!post._isExisting) {
-                console.log(`⏭️  Skip new post (not in snapshot): ${post.title?.substring(0, 50) || post.url}...`);
-                continue;
-            }
-
             const existing = this.findMatchingRow(post, existingPosts);
 
             // Parse values - store as RAW NUMBERS
@@ -272,15 +394,25 @@ class FacebookSheetsManager {
                 // UPDATE existing row - use raw numbers
                 const row = existing.rowNum;
 
-                // Update No column with sequential number
-                const rowNumber = row - this.sheetConfig.DATA_START_ROW + 1;
-                updates.push({ range: `${cols.NO}${row}`, value: rowNumber });
-
                 // Update title + describe (AI-processed)
                 if (post.mainContent) {
                     updates.push({ range: `${cols.TITLE}${row}`, value: post.mainContent });
                 }
                 updates.push({ range: `${cols.DESCRIBE}${row}`, value: post.describe || '' });
+
+                // Fill FORMAT, STATUS if missing (for rows inserted before fix)
+                if (!existing.format && post.postType) {
+                    updates.push({ range: `${cols.FORMAT}${row}`, value: post.postType });
+                }
+                if (!existing.status) {
+                    updates.push({ range: `${cols.STATUS}${row}`, value: 'Published' });
+                }
+
+                // ALWAYS update DATE to ensure MM/DD format (reformat existing dates)
+                if (post.date || existing.date) {
+                    const formattedDate = this.formatPublishDate(post.date || existing.date);
+                    updates.push({ range: `${cols.DATE}${row}`, value: formattedDate });
+                }
 
                 // Update metrics - H=View, I=Reach, J=Like, K=Comment, L=Share
                 updates.push({ range: `${cols.VIEW}${row}`, value: views });
@@ -296,9 +428,29 @@ class FacebookSheetsManager {
                 updatedCount++;
                 console.log(`✅ Update Row ${row}: ${post.title.substring(0, 40)}...`);
             } else {
-                // Post exists in snapshot but not found in sheet
-                // This can happen if row was manually deleted or URL doesn't match
-                console.log(`⚠️  Skip - in snapshot but not found in sheet: ${post.title?.substring(0, 50) || post.url}`);
+                // INSERT new post (not found in sheet)
+                // Format date to "DD/M" format (e.g., "12/2")
+                const formattedDate = this.formatPublishDate(post.date);
+
+                const rowData = [
+                    '', // A: No (will be updated later)
+                    post.mainContent || post.title, // B: Title (AI-processed)
+                    post.describe || '', // C: Describe
+                    post.postType || 'Post', // D: Format (from CSV "Post Type")
+                    formattedDate, // E: Date (formatted as "DD/M")
+                    'Published', // F: Status (default for new posts)
+                    post.url, // G: Link to Post
+                    views, // H: View
+                    cols.REACH ? (parseMetricValue(post.impressions) || 0) : undefined, // I: Reach (if column exists)
+                    engagement, // J: Like
+                    comments, // K: Comment
+                    shares, // L: Share
+                    dateStr // M: Note
+                ].filter(v => v !== undefined); // Remove undefined values
+
+                newRows.push(rowData);
+                insertedCount++;
+                console.log(`🆕 Insert: ${post.title?.substring(0, 40) || post.url.substring(0, 40)}...`);
             }
         }
 
@@ -308,8 +460,18 @@ class FacebookSheetsManager {
             await this.updateCells(updates);
         }
 
-        // NOTE: newRows array is no longer used - we only UPDATE existing rows, never INSERT new ones
-        // This prevents duplicate rows when re-running the crawler
+        // Insert new rows
+        if (newRows.length > 0) {
+            console.log(`\n📝 Inserting ${newRows.length} new rows...`);
+            await this.appendRows(newRows);
+        }
+
+        // Sort by DATE column (newest first)
+        console.log('\n📊 Sorting by DATE OF PUBLICATION...');
+        await this.sortByDate();
+
+        // Renumber No. column (oldest=1, newest=max)
+        await this.renumberRows();
 
         // Clear bold formatting and format number columns
         await this.clearBoldFormatting(this.sheetConfig.DATA_START_ROW, 1000);
@@ -344,11 +506,12 @@ class FacebookSheetsManager {
         const cols = this.sheetConfig.COLUMNS;
         const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
 
-        // IMPORTANT: Read each column separately to avoid column I (REACH) offset issue
-        // Daily Update FB: G=Link, H=View, I=Reach (skip), J=Like, K=Comment, L=Share
-        const [urlData, viewData, likeData, commentData, shareData] = await Promise.all([
+        // Read each column separately from main sheet
+        // Daily Update FB: G=Link, H=View, I=Reach, J=Like, K=Comment, L=Share
+        const [urlData, viewData, reachData, likeData, commentData, shareData] = await Promise.all([
             this.readSheet(`${cols.LINK_TO_POST}${DATA_START_ROW}:${cols.LINK_TO_POST}1000`),
             this.readSheet(`${cols.VIEW}${DATA_START_ROW}:${cols.VIEW}1000`),
+            this.readSheet(`${cols.REACH}${DATA_START_ROW}:${cols.REACH}1000`),
             this.readSheet(`${cols.LIKE}${DATA_START_ROW}:${cols.LIKE}1000`),
             this.readSheet(`${cols.COMMENT}${DATA_START_ROW}:${cols.COMMENT}1000`),
             this.readSheet(`${cols.SHARE}${DATA_START_ROW}:${cols.SHARE}1000`)
@@ -362,6 +525,7 @@ class FacebookSheetsManager {
 
             const metrics = {
                 view: parseMetricValue(viewData[index]?.[0]) || 0,
+                reach: parseMetricValue(reachData[index]?.[0]) || 0,
                 like: parseMetricValue(likeData[index]?.[0]) || 0,
                 comment: parseMetricValue(commentData[index]?.[0]) || 0,
                 share: parseMetricValue(shareData[index]?.[0]) || 0
@@ -424,6 +588,7 @@ class FacebookSheetsManager {
                         // Update metrics columns for sync tabs
                         // Sync tabs: I=View, J=Reach, K=Like, L=Comment, M=Share, N=Note
                         updates.push({ range: `${tabName}!I${rowNum}`, value: metrics.view });
+                        updates.push({ range: `${tabName}!J${rowNum}`, value: metrics.reach });
                         updates.push({ range: `${tabName}!K${rowNum}`, value: metrics.like });
                         updates.push({ range: `${tabName}!L${rowNum}`, value: metrics.comment });
                         updates.push({ range: `${tabName}!M${rowNum}`, value: metrics.share });

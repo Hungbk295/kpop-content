@@ -198,6 +198,11 @@ class GoogleSheetsManager {
                 // Skip share - Step 6 updates only videos with ≥5% like growth (see scrapeSelectiveShares)
                 // updates.push({ range: `${cols.SHARE}${row}`, value: shares });
 
+                // Update Status if detected
+                if (video.status) {
+                    updates.push({ range: `${cols.STATUS}${row}`, value: video.status });
+                }
+
                 // Update NOTE with timestamp
                 const now = new Date();
                 const dateStr = `Update ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -290,7 +295,7 @@ class GoogleSheetsManager {
                 'Video',                             // D: Format
                 'TikTok',                            // E: Channel
                 formatDate(video.date),              // F: Date
-                'Published',                         // G: Status
+                video.status || 'Published',          // G: Status (detected from TikTok Studio)
                 video.url,                           // H: Link
                 parseMetricValue(video.views),       // I: View (raw number)
                 parseMetricValue(video.likes),       // J: Like (raw number)

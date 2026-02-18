@@ -1,6 +1,7 @@
 const { TikTokCrawler } = require('../tiktok/crawler');
 const { FacebookCrawler } = require('../facebook/crawler');
 const { SNSFollowersManager } = require('./followers-sheets');
+const { initLogger } = require('../shared/logger');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
@@ -23,8 +24,12 @@ async function withRetry(fn, maxRetries = 2, delay = 3000) {
 }
 
 async function main() {
+    // Initialize logger - will save all console output to logs/sns.txt
+    const logger = initLogger('sns');
+
     console.log('═══════════════════════════════════════════');
     console.log('   SNS Follower Count Tracker');
+    console.log('   (Facebook + TikTok)');
     console.log('═══════════════════════════════════════════\n');
 
     const tiktokCrawler = new TikTokCrawler();
@@ -135,6 +140,9 @@ async function main() {
     } finally {
         await tiktokCrawler.close();
         await fbCrawler.close();
+
+        // Restore console and finalize log
+        logger.restore();
     }
 }
 

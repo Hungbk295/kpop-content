@@ -136,6 +136,20 @@ const SCRAPE_SCRIPT = `
             // Check if pinned
             const isPinned = texts.some(t => t.toLowerCase().includes('pin')) ? 'Yes' : 'No';
 
+            // Detect publish status from row text
+            const textsLower = texts.map(t => t.toLowerCase());
+            const rowText = textsLower.join(' ');
+            let status = 'Published';
+            if (rowText.includes('content under review') || rowText.includes('under review')) {
+                status = 'Under Review';
+            } else if (rowText.includes('only me') || rowText.includes('private')) {
+                status = 'Private';
+            } else if (rowText.includes('friends only')) {
+                status = 'Friends Only';
+            } else if (rowText.includes('draft')) {
+                status = 'Draft';
+            }
+
             if (title || url) {
                 collectedVideos.set(url, {
                     title: title || 'Untitled',
@@ -145,6 +159,7 @@ const SCRAPE_SCRIPT = `
                     comments,
                     shares,
                     pinned: isPinned,
+                    status,
                     url
                 });
             }

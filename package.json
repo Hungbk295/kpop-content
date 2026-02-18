@@ -18,7 +18,10 @@
     "snapshot:tiktok": "node src/shared/db.js tiktok",
     "snapshot:fb": "node src/shared/db.js facebook",
     "recall-ai:tiktok": "node scripts/recall-ai.js tiktok",
-    "recall-ai:fb": "node scripts/recall-ai.js facebook"
+    "recall-ai:fb": "node scripts/recall-ai.js facebook",
+    "cronjob": "node src/cronjob.js",
+    "pipeline": "node src/cronjob.js",
+    "pipeline:test": "node scripts/run-pipeline.js"
   },
   "keywords": [
     "tiktok",
@@ -33,6 +36,7 @@
     "better-sqlite3": "^12.6.2",
     "csv-parse": "^6.1.0",
     "googleapis": "^171.3.0",
+    "node-cron": "^3.0.3",
     "playwright": "^1.58.1"
   }
 }

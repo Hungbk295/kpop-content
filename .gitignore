@@ -18,6 +18,8 @@ data/
 # Logs
 *.log
 npm-debug.log*
+logs/*
+!logs/.gitkeep
 
 # OS files
 .DS_Store

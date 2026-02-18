@@ -35,7 +35,7 @@ class ZaloOACrawler {
         // TODO: User will provide navigation logic
         // Example:
         // this.page = await this.context.newPage();
-        // await this.page.goto('https://oa.zalo.me/...', { waitUntil: 'networkidle' });
+        await this.page.goto('https://oa.zalo.me/manage/analytics/profile', { waitUntil: 'networkidle' });
 
         throw new Error('navigateToZaloOA() not implemented yet - user will provide navigation logic');
     }

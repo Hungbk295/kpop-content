@@ -88,7 +88,7 @@ module.exports = {
     AI_API: {
         endpoint: process.env.AI_API_ENDPOINT || 'http://localhost:8045/v1/chat/completions',
         apiKey: process.env.AI_API_KEY || 'sk-3e7fc5fd772041749dc409d0144f97a4',
-        model: process.env.AI_API_MODEL || 'claude-sonnet-4-5-20250929'
+        model: process.env.AI_API_MODEL || 'gemini-3-flash'
     },
 
     // Data backup directory
@@ -125,14 +125,16 @@ module.exports = {
         // Reuse TikTok browser profile (user already logged in to Zalo there)
         USER_DATA_DIR: process.env.USER_DATA_DIR || './browser-data',
 
+        // Zalo MiniApp URL
+        MINIAPP_URL: process.env.ZALO_MINIAPP_URL || 'https://miniapp.zaloplatforms.com/miniapp/1774671493144848971/statistic/overview',
+
         // Google Sheets config for Zalo
         SHEETS: {
             SPREADSHEET_ID: process.env.ZALO_SPREADSHEET_ID || '175hqUyhsypAKeorVslqnUrqm5240nCvjlWtsJ1rdQpE',
 
-            // Zalo OA sheet config
+            // Zalo OA sheet config (not used yet - syncs to MINIAPP sheet)
             OA: {
                 SHEET_NAME: process.env.ZALO_OA_SHEET_NAME || 'Zalo OA',
-                // TODO: Define columns based on user's sheet structure
                 COLUMNS: {},
                 DATA_START_ROW: parseInt(process.env.ZALO_OA_DATA_START_ROW, 10) || 3
             },

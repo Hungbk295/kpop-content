@@ -1,0 +1,53 @@
+name: Daily Metrics Crawler
+
+on:
+  schedule:
+    # Chạy vào 9:00 sáng UTC+7 (2:00 AM UTC)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Cho phép chạy thủ công
+
+jobs:
+  crawl-metrics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run TikTok crawler
+        run: npm run tiktok
+        continue-on-error: true
+
+      - name: Run Facebook crawler
+        run: npm run fb
+        continue-on-error: true
+
+      - name: Run SNS followers
+        run: npm run sns:followers
+        continue-on-error: true
+
+      - name: Run Zalo crawler
+        run: npm run zalo
+        continue-on-error: true
+
+      - name: Upload logs (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawler-logs-${{ github.run_number }}
+          path: |
+            logs/
+            *.log
+          retention-days: 7

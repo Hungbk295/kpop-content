@@ -75,12 +75,12 @@ class ZaloSheetsManager {
         });
     }
 
-    async syncMetrics(data) {
+    async syncMetrics(miniAppData, oaData) {
         if (this.type !== 'miniapp') {
-            throw new Error('syncMetrics() only implemented for miniapp type');
+            throw new Error('syncMetrics() requires miniapp type (syncs both MiniApp and OA data to same sheet)');
         }
 
-        console.log(`\n📊 Syncing MiniApp metrics to sheet...`);
+        console.log(`\n📊 Syncing MiniApp and OA metrics to sheet...`);
 
         const now = new Date();
         const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
@@ -92,26 +92,53 @@ class ZaloSheetsManager {
 
         await this.insertRowAt(DATA_START_ROW);
 
-        const rowData = [
+        // Column layout: MiniApp (B-H) and OA (K-R) share the same row
+        // MiniApp: B=time, C=DAU, D=DOD, E=growth%, F=new_user, G=sessions, H=avg_time
+        // OA: K=time, L=total_follower, M=growth, N=growth%, O=visitor, P=session, Q=new_follower, R=unfollower
+
+        // MiniApp data (columns B-H)
+        const miniAppRowData = [
             dateStr,                                           // B: Time
-            data.dau,                                          // C: DAU
+            miniAppData.dau,                                   // C: DAU
             `=C${DATA_START_ROW}-C${DATA_START_ROW + 1}`,     // D: DOD (current DAU - previous DAU)
             `=D${DATA_START_ROW}/C${DATA_START_ROW}`,         // E: Growth Rate (DOD / current DAU)
-            data.new_user,                                     // F: New User
-            data.sessions,                                     // G: Sessions
-            data.average_time                                  // H: Average Time
+            miniAppData.new_user,                              // F: New User
+            miniAppData.sessions,                              // G: Sessions
+            miniAppData.average_time                           // H: Average Time
         ];
 
-        await this.sheets.spreadsheets.values.update({
+        // OA data (columns K-R)
+        // K=time, L=total_follower, M=formula (L10-L11), N=formula (M10/L10), O=oa_visitor, P=oa_session, Q=new_follower, R=unfollower
+        const oaRowData = [
+            dateStr,                                           // K: Time
+            oaData.total_follower,                             // L: Total Follower
+            `=L${DATA_START_ROW}-L${DATA_START_ROW + 1}`,     // M: Follower Growth (current - previous)
+            `=M${DATA_START_ROW}/L${DATA_START_ROW}`,         // N: Growth Rate (growth / current)
+            oaData.oa_visitor,                                 // O: OA Visitor
+            oaData.oa_session,                                 // P: OA Session
+            oaData.new_follower,                               // Q: New Follower
+            oaData.unfollower                                  // R: Unfollower
+        ];
+
+        // Update both ranges in a single batch
+        await this.sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!B${DATA_START_ROW}:H${DATA_START_ROW}`,
-            valueInputOption: 'USER_ENTERED',
             resource: {
-                values: [rowData]
+                valueInputOption: 'USER_ENTERED',
+                data: [
+                    {
+                        range: `${this.sheetConfig.SHEET_NAME}!B${DATA_START_ROW}:H${DATA_START_ROW}`,
+                        values: [miniAppRowData]
+                    },
+                    {
+                        range: `${this.sheetConfig.SHEET_NAME}!K${DATA_START_ROW}:R${DATA_START_ROW}`,
+                        values: [oaRowData]
+                    }
+                ]
             }
         });
 
-        console.log(`✅ Inserted new row at row ${DATA_START_ROW}`);
+        console.log(`✅ Inserted new row at row ${DATA_START_ROW} with MiniApp (B-H) and OA (K-R) data`);
         return { insertedCount: 1, updatedCount: 0 };
     }
 
