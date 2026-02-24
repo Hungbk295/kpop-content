@@ -64,7 +64,7 @@ async function runPipeline() {
 
 // Schedule cronjob - runs at 9:00 AM every day
 // Cron format: second minute hour day month weekday
-cron.schedule('0 9 * * *', async () => {
+cron.schedule('06 9 * * *', async () => {
   log('Cron job triggered');
   await runPipeline();
 }, {

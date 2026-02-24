@@ -27,8 +27,8 @@ function parseMetricValue(value) {
         return Math.round(parseFloat(str.replace('B', '')) * 1000000000);
     }
 
-    // Remove commas and parse
-    return parseInt(str.replace(/,/g, ''), 10) || 0;
+    // Remove commas and dots (thousands separators, e.g. Vietnamese "1.312" = 1312) and parse
+    return parseInt(str.replace(/[,.]/g, ''), 10) || 0;
 }
 
 /**

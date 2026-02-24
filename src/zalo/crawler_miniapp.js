@@ -23,7 +23,7 @@ class ZaloMiniAppCrawler {
             locale: 'vi-VN',
             args: [
                 '--disable-blink-features=AutomationControlled',
-                '--disable-web-security'
+                '--disable-web-security // Note: This flag disables critical security features. Only use in controlled environments.\n            // It\'s used here as the browser context is isolated for scraping purposes.'
             ]
         });
 

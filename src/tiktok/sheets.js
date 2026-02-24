@@ -244,7 +244,7 @@ class GoogleSheetsManager {
             return { insertedCount: 0 };
         }
 
-        // Sort by date ascending (oldest first, newest at bottom)
+        // Sort by date ascending (oldest first) so newest ends up at top after insert
         const monthOrder = {
             'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
             'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
@@ -258,7 +258,7 @@ class GoogleSheetsManager {
         };
         newVideos.sort((a, b) => parseDate(a.date) - parseDate(b.date));
 
-        console.log(`📝 Inserting ${newVideos.length} new videos (oldest → newest)...`);
+        console.log(`📝 Inserting ${newVideos.length} new videos...`);
 
         // Find the next available row
         const lastRow = startRow + existingUrls.size;
@@ -289,7 +289,7 @@ class GoogleSheetsManager {
             const noteStr = `Insert ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
 
             return [
-                rowNum - startRow + 1,              // A: No (số thứ tự)
+                rowNum - startRow + 1,              // A: No
                 video.mainContent || video.title,    // B: Title (AI-processed or raw)
                 video.describe || '',                // C: Describe (AI-generated)
                 'Video',                             // D: Format
@@ -311,9 +311,7 @@ class GoogleSheetsManager {
             range: `${config.GOOGLE_SHEETS.SHEET_NAME}!A${startRow}`,
             valueInputOption: 'USER_ENTERED',
             insertDataOption: 'INSERT_ROWS',
-            resource: {
-                values: rows
-            }
+            resource: { values: rows }
         });
 
         console.log(`✅ Inserted ${rows.length} new videos`);
@@ -324,6 +322,26 @@ class GoogleSheetsManager {
         });
 
         return { insertedCount: rows.length };
+    }
+
+    // Renumber column A (No) for all data rows: 1, 2, 3, ...
+    async renumberRows() {
+        const startRow = config.GOOGLE_SHEETS.DATA_START_ROW;
+        const rows = await this.readSheet(`H${startRow}:H1000`); // Read link column to count rows
+        const totalRows = rows.length;
+        if (totalRows === 0) return;
+
+        const numbers = [];
+        for (let i = 0; i < totalRows; i++) {
+            numbers.push([i + 1]);
+        }
+
+        await this.sheets.spreadsheets.values.update({
+            spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
+            range: `${config.GOOGLE_SHEETS.SHEET_NAME}!A${startRow}:A${startRow + totalRows - 1}`,
+            valueInputOption: 'RAW',
+            resource: { values: numbers }
+        });
     }
 
     // Save snapshot of current sheet data before any updates
@@ -343,6 +361,56 @@ class GoogleSheetsManager {
         }
     }
 
+    // Sort all data rows by date descending (newest first)
+    // Dates are stored as text "d/m" so we parse and sort in code, then rewrite
+    async sortByDateDescending() {
+        const startRow = config.GOOGLE_SHEETS.DATA_START_ROW;
+
+        // Read all data rows (A:M)
+        const rows = await this.readSheet(`A${startRow}:M1000`);
+        if (rows.length <= 1) return;
+
+        console.log(`🔄 Sorting ${rows.length} rows by date (newest first)...`);
+
+        // Parse "d/m" date string to sortable number (month * 100 + day)
+        const parseDateValue = (dateStr) => {
+            if (!dateStr) return 0;
+            const str = String(dateStr).replace(/^'/, ''); // strip leading '
+            const match = str.match(/^(\d{1,2})\/(\d{1,2})$/);
+            if (!match) return 0;
+            const day = parseInt(match[1], 10);
+            const month = parseInt(match[2], 10);
+            return month * 100 + day; // e.g. 22/2 -> 222, 26/1 -> 126
+        };
+
+        // Sort descending by date (column F = index 5)
+        rows.sort((a, b) => {
+            const dateA = parseDateValue(a[5]);
+            const dateB = parseDateValue(b[5]);
+            return dateB - dateA; // descending
+        });
+
+        // Renumber column A (index 0)
+        rows.forEach((row, i) => {
+            row[0] = i + 1;
+        });
+
+        // Pad rows to ensure all have 13 columns (A-M)
+        rows.forEach(row => {
+            while (row.length < 13) row.push('');
+        });
+
+        // Write sorted data back using RAW to preserve date strings as-is
+        await this.sheets.spreadsheets.values.update({
+            spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
+            range: `${config.GOOGLE_SHEETS.SHEET_NAME}!A${startRow}:M${startRow + rows.length - 1}`,
+            valueInputOption: 'RAW',
+            resource: { values: rows }
+        });
+
+        console.log('✅ Sorted and renumbered!');
+    }
+
     // Combined: Update existing + Insert new
     async syncMetrics(scrapedData) {
         console.log('\n📊 Syncing metrics with sheet...');
@@ -355,6 +423,9 @@ class GoogleSheetsManager {
 
         // Then, update all metrics (including newly inserted)
         const updateResult = await this.updateMetrics(scrapedData);
+
+        // Sort by date descending (newest first) and renumber
+        await this.sortByDateDescending();
 
         // Clear bold formatting and format number columns
         await this.clearBoldFormatting(config.GOOGLE_SHEETS.DATA_START_ROW, 1000);

@@ -46,59 +46,81 @@ class SNSFollowersManager {
         console.log('✅ Google Sheets API ready!');
     }
 
-    async readSheet(range) {
+    async readSheet(range, valueRenderOption = 'UNFORMATTED_VALUE') {
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
             range: `${this.sheetConfig.SHEET_NAME}!${range}`,
-            valueRenderOption: 'UNFORMATTED_VALUE' // Get raw numbers, not formatted strings
+            valueRenderOption
         });
 
         return response.data.values || [];
     }
 
-    async getLatestDate() {
-        const cols = this.sheetConfig.COLUMNS;
-        const rows = await this.readSheet(`${cols.UPDATE_DATE}${this.sheetConfig.DATA_START_ROW}:${cols.UPDATE_DATE}1000`);
+    /**
+     * Find the last data row number (row with a date in column A)
+     * Uses FORMATTED_VALUE to avoid date serial number issues
+     */
+    async findLastDataRow() {
+        const startRow = this.sheetConfig.DATA_START_ROW;
+        const rows = await this.readSheet(`A${startRow}:A1000`, 'FORMATTED_VALUE');
 
-        if (rows.length === 0) return null;
+        let lastDataRowIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+            const val = rows[i][0];
+            // Only count rows that have a date-like value (contains /)
+            if (val && String(val).includes('/')) {
+                lastDataRowIndex = i;
+            }
+        }
 
-        const lastRow = rows[rows.length - 1];
-        return lastRow[0] || null;
-    }
+        if (lastDataRowIndex === -1) return null;
 
-    async getPreviousRow() {
-        // Read last row with all data (A:I)
-        const rows = await this.readSheet(`A${this.sheetConfig.DATA_START_ROW}:I1000`);
-
-        if (rows.length === 0) return null;
-
-        const lastRow = rows[rows.length - 1];
-        // Return parsed values: [date, fbFollowers, fbGrowth, fbGrowthRate, empty, tiktokFollowers, tiktokGrowth, tiktokGrowthRate, tiktokLikes]
         return {
-            date: lastRow[0] || null,
-            fbFollowers: parseMetricValue(lastRow[1]),
-            fbGrowth: parseFloat(lastRow[2]) || 0,
-            fbGrowthRate: parseFloat(lastRow[3]) || 0,
-            tiktokFollowers: parseMetricValue(lastRow[5]),
-            tiktokGrowth: parseFloat(lastRow[6]) || 0,
-            tiktokGrowthRate: parseFloat(lastRow[7]) || 0,
-            tiktokLikes: parseMetricValue(lastRow[8]) || 0
+            rowNumber: startRow + lastDataRowIndex,
+            date: rows[lastDataRowIndex][0]
         };
     }
 
+    async getLatestDate() {
+        const lastRow = await this.findLastDataRow();
+        if (!lastRow) return null;
+        return lastRow.date;
+    }
+
+    async getPreviousRow() {
+        const lastRow = await this.findLastDataRow();
+        if (!lastRow) return null;
+
+        // Read that specific row with UNFORMATTED_VALUE for numeric data
+        const rowNum = lastRow.rowNumber;
+        const rows = await this.readSheet(`A${rowNum}:I${rowNum}`, 'UNFORMATTED_VALUE');
+
+        if (rows.length === 0) return null;
+
+        const row = rows[0];
+        return {
+            date: lastRow.date,
+            fbFollowers: parseMetricValue(row[1]),
+            fbGrowth: parseFloat(row[2]) || 0,
+            fbGrowthRate: parseFloat(row[3]) || 0,
+            tiktokFollowers: parseMetricValue(row[5]),
+            tiktokGrowth: parseFloat(row[6]) || 0,
+            tiktokGrowthRate: parseFloat(row[7]) || 0
+        };
+    }
+
+    /**
+     * Format date as d/m (matching existing sheet format, no year)
+     */
     formatDate(date) {
         const day = date.getDate();
         const month = date.getMonth() + 1;
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        return `${day}/${month}`;
     }
 
-    async appendFollowerRow(date, fbCount, tiktokCount, tiktokLikes) {
-        const cols = this.sheetConfig.COLUMNS;
-
+    async appendFollowerRow(date, fbCount, tiktokCount) {
         const fbFollowers = parseMetricValue(fbCount);
         const tiktokFollowers = parseMetricValue(tiktokCount);
-        const tiktokLikesNum = parseMetricValue(tiktokLikes);
 
         const dateStr = this.formatDate(date);
 
@@ -111,13 +133,11 @@ class SNSFollowersManager {
         let tiktokGrowthRate = 0;
 
         if (previousRow) {
-            // Calculate Facebook growth
             fbGrowth = fbFollowers - previousRow.fbFollowers;
             fbGrowthRate = previousRow.fbFollowers > 0
                 ? (fbGrowth / previousRow.fbFollowers) * 100
                 : 0;
 
-            // Calculate TikTok growth
             tiktokGrowth = tiktokFollowers - previousRow.tiktokFollowers;
             tiktokGrowthRate = previousRow.tiktokFollowers > 0
                 ? (tiktokGrowth / previousRow.tiktokFollowers) * 100
@@ -127,184 +147,93 @@ class SNSFollowersManager {
         console.log(`📝 Appending row: ${dateStr}`);
         console.log(`   FB: ${fbFollowers} (${fbGrowth >= 0 ? '+' : ''}${fbGrowth}, ${fbGrowthRate.toFixed(2)}%)`);
         console.log(`   TikTok: ${tiktokFollowers} (${tiktokGrowth >= 0 ? '+' : ''}${tiktokGrowth}, ${tiktokGrowthRate.toFixed(2)}%)`);
-        console.log(`   TikTok Likes: ${tiktokLikesNum}`);
 
-        // Row: [Date, FB, FB Growth, FB Growth %, empty, TikTok, TikTok Growth, TikTok Growth %, TikTok Likes]
-        // Columns: A, B, C, D, E (empty), F, G, H, I
-        // Note: D and H are percentages - store as decimal (0.0245 = 2.45%), Google Sheets will format them
-        const row = [
-            dateStr,                        // A: Date
-            fbFollowers,                    // B: Facebook followers
-            fbGrowth,                       // C: FB growth
-            fbGrowthRate / 100,             // D: FB growth rate (decimal: 0.0245 = 2.45%)
-            '',                             // E: Empty
-            tiktokFollowers,                // F: TikTok followers
-            tiktokGrowth,                   // G: TikTok growth
-            tiktokGrowthRate / 100,         // H: TikTok growth rate (decimal: 0.0087 = 0.87%)
-            tiktokLikesNum                  // I: TikTok likes
-        ];
+        // Find next row to write (after last data row)
+        const lastRow = await this.findLastDataRow();
+        const nextRowNum = lastRow ? lastRow.rowNumber + 1 : this.sheetConfig.DATA_START_ROW;
 
-        await this.sheets.spreadsheets.values.append({
+        // Row: [Date, FB, FB Growth, FB Growth %, (skip E), TikTok, TikTok Growth, TikTok Growth %]
+        // Columns: A, B, C, D, skip E (7-day change, manual), F, G, H, skip I (7-day change, manual)
+        // Write A:D and F:H separately to avoid overwriting E and I
+        await this.sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!A:I`,
-            valueInputOption: 'USER_ENTERED',
-            insertDataOption: 'INSERT_ROWS',
             resource: {
-                values: [row]
+                valueInputOption: 'RAW',
+                data: [
+                    {
+                        range: `${this.sheetConfig.SHEET_NAME}!A${nextRowNum}:D${nextRowNum}`,
+                        values: [[
+                            dateStr,
+                            fbFollowers,
+                            fbGrowth,
+                            fbGrowthRate / 100
+                        ]]
+                    },
+                    {
+                        range: `${this.sheetConfig.SHEET_NAME}!F${nextRowNum}:H${nextRowNum}`,
+                        values: [[
+                            tiktokFollowers,
+                            tiktokGrowth,
+                            tiktokGrowthRate / 100
+                        ]]
+                    }
+                ]
             }
         });
 
-        console.log('✅ Row appended successfully!');
+        console.log(`✅ Row appended at row ${nextRowNum}!`);
     }
 
     async formatNumberColumns() {
         const sheetId = await this.getSheetId();
+        const startRow = this.sheetConfig.DATA_START_ROW - 1; // 0-indexed
 
         const requests = [
             // Column B: Facebook Followers (number with comma)
             {
                 repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 1,
-                        endColumnIndex: 2
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '#,##0'
-                            }
-                        }
-                    },
+                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 1, endColumnIndex: 2 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
-            // Column C: Facebook Growth (number with comma, can be negative)
+            // Column C: Facebook Growth (number with comma)
             {
                 repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 2,
-                        endColumnIndex: 3
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '#,##0'
-                            }
-                        }
-                    },
+                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 2, endColumnIndex: 3 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
-            // Column D: Facebook Growth Rate (percentage with 2 decimals)
+            // Column D: Facebook Growth Rate (percentage)
             {
                 repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 3,
-                        endColumnIndex: 4
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '0.00"%"'
-                            }
-                        }
-                    },
+                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 3, endColumnIndex: 4 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'PERCENT', pattern: '0.00%' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
             // Column F: TikTok Followers (number with comma)
             {
                 repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 5,
-                        endColumnIndex: 6
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '#,##0'
-                            }
-                        }
-                    },
+                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 5, endColumnIndex: 6 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
-            // Column G: TikTok Growth (number with comma, can be negative)
+            // Column G: TikTok Growth (number with comma)
             {
                 repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 6,
-                        endColumnIndex: 7
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '#,##0'
-                            }
-                        }
-                    },
+                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 6, endColumnIndex: 7 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
-            // Column H: TikTok Growth Rate (percentage with 2 decimals)
+            // Column H: TikTok Growth Rate (percentage)
             {
                 repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 7,
-                        endColumnIndex: 8
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '0.00"%"'
-                            }
-                        }
-                    },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            // Column I: TikTok Likes (number with comma)
-            {
-                repeatCell: {
-                    range: {
-                        sheetId,
-                        startRowIndex: this.sheetConfig.DATA_START_ROW - 1,
-                        endRowIndex: 1000,
-                        startColumnIndex: 8,
-                        endColumnIndex: 9
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'NUMBER',
-                                pattern: '#,##0'
-                            }
-                        }
-                    },
+                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 7, endColumnIndex: 8 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'PERCENT', pattern: '0.00%' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             }
@@ -314,6 +243,43 @@ class SNSFollowersManager {
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
             resource: { requests }
         });
+    }
+
+    /**
+     * Clean up junk rows (rows after last valid data that have garbage data)
+     */
+    async cleanupJunkRows() {
+        const lastRow = await this.findLastDataRow();
+        if (!lastRow) return;
+
+        const sheetId = await this.getSheetId();
+        const nextRow = lastRow.rowNumber + 1;
+
+        // Read rows after last data to check for junk
+        const rows = await this.readSheet(`A${nextRow}:I${nextRow + 20}`, 'FORMATTED_VALUE');
+        if (rows.length === 0) return;
+
+        // Count rows that have any content (junk)
+        let junkCount = 0;
+        for (const row of rows) {
+            if (row.some(cell => cell !== '' && cell !== undefined && cell !== null)) {
+                junkCount++;
+            } else {
+                break; // Stop at first fully empty row
+            }
+        }
+
+        if (junkCount === 0) return;
+
+        console.log(`🧹 Cleaning up ${junkCount} junk rows starting from row ${nextRow}...`);
+
+        // Clear the junk rows
+        await this.sheets.spreadsheets.values.clear({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            range: `${this.sheetConfig.SHEET_NAME}!A${nextRow}:I${nextRow + junkCount - 1}`
+        });
+
+        console.log('✅ Junk rows cleaned!');
     }
 
     async getSheetId() {

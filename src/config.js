@@ -103,6 +103,9 @@ module.exports = {
     },
 
     // SNS Followers tracking config
+    // Actual sheet layout:
+    // A=Update date (d/m), B=Facebook, C=DOD, D=Growth Rate(%), E=7-Day Change
+    // F=Tiktok Followers, G=DOD, H=Growth Rate(%), I=7-Day Change
     SNS_FOLLOWERS: {
         SPREADSHEET_ID: process.env.SNS_SPREADSHEET_ID || '1ejbA0DMJKpfO9yVuBAHXsZQoToIi_Eb4f4RW5nCTaLE',
         SHEET_NAME: process.env.SNS_SHEET_NAME || 'SNS Followers',
@@ -111,13 +114,13 @@ module.exports = {
             FACEBOOK_FOLLOWERS: 'B',
             FACEBOOK_GROWTH: 'C',
             FACEBOOK_GROWTH_RATE: 'D',
-            // E reserved for future use or formulas
+            FB_7DAY_CHANGE: 'E',
             TIKTOK_FOLLOWERS: 'F',
             TIKTOK_GROWTH: 'G',
             TIKTOK_GROWTH_RATE: 'H',
-            TIKTOK_LIKES: 'I'
+            TIKTOK_7DAY_CHANGE: 'I'
         },
-        DATA_START_ROW: parseInt(process.env.SNS_DATA_START_ROW, 10) || 2
+        DATA_START_ROW: parseInt(process.env.SNS_DATA_START_ROW, 10) || 6
     },
 
     // Zalo config (reuses TikTok browser profile)

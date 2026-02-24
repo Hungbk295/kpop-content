@@ -88,26 +88,57 @@ class FacebookSheetsManager {
         const sheetId = await this.getSheetId();
         // H=7, I=8, J=9, K=10 (0-indexed): VIEW, LIKE, COMMENT, SHARE
         const numberCols = [7, 8, 9, 10];
-        const requests = numberCols.map(col => ({
+
+        // Date column (E = index 4) needs specific date format
+        const dateColIndex = 4;
+
+        const requests = [];
+
+        // Format Date column as "dd/mm"
+        requests.push({
             repeatCell: {
                 range: {
                     sheetId,
                     startRowIndex: startRow - 1,
                     endRowIndex: endRow,
-                    startColumnIndex: col,
-                    endColumnIndex: col + 1
+                    startColumnIndex: dateColIndex,
+                    endColumnIndex: dateColIndex + 1
                 },
                 cell: {
                     userEnteredFormat: {
                         numberFormat: {
-                            type: 'NUMBER',
-                            pattern: '#,##0'
+                            type: 'DATE',
+                            pattern: 'dd/mm'
                         }
                     }
                 },
                 fields: 'userEnteredFormat.numberFormat'
             }
-        }));
+        });
+
+        // Format Number columns
+        numberCols.forEach(col => {
+            requests.push({
+                repeatCell: {
+                    range: {
+                        sheetId,
+                        startRowIndex: startRow - 1,
+                        endRowIndex: endRow,
+                        startColumnIndex: col,
+                        endColumnIndex: col + 1
+                    },
+                    cell: {
+                        userEnteredFormat: {
+                            numberFormat: {
+                                type: 'NUMBER',
+                                pattern: '#,##0'
+                            }
+                        }
+                    },
+                    fields: 'userEnteredFormat.numberFormat'
+                }
+            });
+        });
 
         await this.sheets.spreadsheets.batchUpdate({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
@@ -227,40 +258,48 @@ class FacebookSheetsManager {
     }
 
     /**
-     * Format publish date to "MM/DD" format (e.g., "02/12", "01/19")
-     * This format sorts correctly as text (newest first when sorted descending)
+     * Format publish date to "YYYY-MM-DD" format.
+     * This ensures Google Sheets recognizes it as a DATE value for correct sorting.
      */
     formatPublishDate(dateStr) {
         if (!dateStr) return '';
 
-        // If already in "MM/DD" format with leading zeros, return as-is
-        if (/^\d{2}\/\d{2}$/.test(dateStr)) {
+        let date = null;
+
+        // Try to parse different formats
+        // 1. "MM/DD/YYYY HH:MM" (Facebook CSV standard)
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split(/[\s/:]/); // Split by space, slash, colon
+            if (parts.length >= 3) {
+                // Check if first part is month or day based on context (assuming MM/DD/YYYY for US format CSV)
+                // However, let's try to be smart. If year is 4 digits at index 2, it's MM/DD/YYYY
+                if (parts[2].length === 4) {
+                    date = new Date(parts[2], parts[0] - 1, parts[1]);
+                }
+            }
+        }
+
+        // 2. Already YYYY-MM-DD
+        if (!date && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
             return dateStr;
         }
 
-        // FIRST: Try to parse "DD/M" or "D/M" format manually (prioritize this!)
-        const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
-        if (match) {
-            const day = match[1].padStart(2, '0');
-            const month = match[2].padStart(2, '0');
-            return `${month}/${day}`;
-        }
-
-        // SECOND: Try to parse full timestamp formats like "01/19/2026 01:11"
-        try {
-            if (dateStr.includes(' ') || dateStr.includes('-') || dateStr.length > 6) {
-                const date = new Date(dateStr);
-                if (!isNaN(date.getTime())) {
-                    const day = date.getDate().toString().padStart(2, '0');
-                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                    return `${month}/${day}`;
-                }
+        // 3. Fallback: Try standard Date constructor
+        if (!date) {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                date = d;
             }
-        } catch (e) {
-            // Ignore parse errors
         }
 
-        // Return original if can't parse
+        if (date) {
+            const yyyy = date.getFullYear();
+            const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+            const dd = date.getDate().toString().padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        // If all else fails, return original (but it might cause sorting issues)
         return dateStr;
     }
 
