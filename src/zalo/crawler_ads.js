@@ -41,49 +41,6 @@ class ZaloAdsCrawler {
 
         this.page = this.context.pages()[0] || await this.context.newPage();
 
-        // Navigate to Zalo Ads login page
-        console.log('📍 Navigating to Zalo Ads...');
-        await this.page.goto(config.ZALO_ADS.ADS_URL, {
-            waitUntil: 'load',
-            timeout: 30000
-        });
-
-        // Pause for user to login manually
-        await this.waitForUserInput('Hãy đăng nhập Zalo Ads trên trình duyệt, sau đó nhấn ENTER để tiếp tục...');
-
-        // Call auth APIs to establish session context
-        console.log('📍 Calling auth APIs...');
-
-        const whoami = await this.page.evaluate(async () => {
-            const res = await fetch('https://ads.zalo.me/api/whoami', {
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json, text/plain, */*',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            return res.json();
-        });
-        console.log('✅ whoami:', JSON.stringify(whoami));
-
-        const members = await this.page.evaluate(async () => {
-            const res = await fetch('https://ads.zalo.me/api/ba/account/allGrantedMembers', {
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json, text/plain, */*',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            return res.json();
-        });
-        console.log('✅ allGrantedMembers:', JSON.stringify(members));
-
-        // Reload page after auth APIs
-        console.log('🔄 Reloading page...');
-        await this.page.reload({ waitUntil: 'networkidle', timeout: 30000 });
-        await this.page.goto('https://ads.zalo.me/client/campaigns')
-        await this.page.waitForTimeout(3000);
-
         console.log('✅ Browser ready!');
     }
 
@@ -118,10 +75,8 @@ class ZaloAdsCrawler {
         });
         await this.page.waitForTimeout(3000);
 
-        // TODO: Scrape logic will be added here once data fields are confirmed
-        // Placeholder - will extract metrics from the campaign detail page
-
-        throw new Error('Scraping logic not yet implemented. Please provide the crawl flow.');
+        // Pause to let user inspect the page and provide scrape instructions
+        await this.waitForUserInput(`Campaign ${campaignId} loaded. Nhấn ENTER để tiếp tục...`);
     }
 
     async close() {
