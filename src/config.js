@@ -128,11 +128,11 @@ module.exports = {
         ADS_URL: process.env.ZALO_ADS_URL || 'https://ads.zalo.me/client/home',
         CAMPAIGN_DETAIL_URL: 'https://ads.zalo.me/client/campaigns/detail',
 
-        // List of active campaign IDs - update when new ads start running
-        CAMPAIGN_IDS: [
-            '6640483',
-            '6638128',
-        ],
+        // Campaigns with their active ads IDs
+        CAMPAIGNS: {
+            '6640483': ['19811100', '19811097', '19809785'],
+            '6638128': ['19797973', '19797972', '19797971']
+        },
 
         SHEETS: {
             SPREADSHEET_ID: process.env.ZALO_ADS_SPREADSHEET_ID || '1O-TCnUJrh3XlJq5dhDA1F7BQed0z3uo0x-hQx3ySn14',
