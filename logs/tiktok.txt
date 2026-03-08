@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════
   TIKTOK - Log Session
-  2026-02-24T02:06:02.115Z
+  2026-03-08T05:53:01.627Z
 ═══════════════════════════════════════════
 
 📝 Logging to: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/logs/tiktok.txt
@@ -21,124 +21,140 @@
 📌 Step 3/6: Scraping metrics...
 📊 Starting to scrape metrics...
 ✅ Video links detected
-✅ Scraped 71 videos (47 scroll attempts)
-💾 Backup saved to /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/tiktok_metrics_2026-02-24.json
+✅ Scraped 91 videos (72 scroll attempts)
+💾 Backup saved to /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/tiktok_metrics_2026-03-08.json
 
 📌 Step 4/6: Compare & merge with DB snapshot...
 🔐 Initializing Google Sheets API...
 ✅ Google Sheets API ready!
-💾 Snapshot saved: 68 TikTok rows
+💾 Snapshot saved: 95 TikTok rows
 
-🔄 Compare & Merge (tiktok): 71 crawled vs 68 in DB
-  📋 Existing URLs (skip AI, metrics only): 64
-  🤖 New URLs (use AI for title+describe): 7
-🤖 Processing 7 items...
-🤖 Calling AI: 7 items in 1 batch(es)...
-  1. [AI] Lucky Draw Official Launch
-  2. [AI] 12 Years Later
-  3. [AI] Flashback to 2013
-  4. [AI] VFA Weekly Results Announcement
-  5. [AI] Secondhand Embarrassment for EXO
-  6. [AI] Latin Pop Mastery
-  7. [AI] An Emotional Experience
+🔄 Compare & Merge (tiktok): 91 crawled vs 95 in DB
+  📋 Existing (skip AI, metrics only): 88
+  🤖 New (run AI for title+describe): 3
+🤖 Processing 3 items...
+🤖 Calling AI: 3 items in 1 batch(es)...
+  1. [AI] Nostalgic Music Memories
+  2. [AI] Forgotten EDM Gems
+  3. [AI] Timeless Legends from 2018 to 2026
   ✅ Batch [1/1] done
 ✅ Content processing complete!
-  ✅ Merged: 68 existing + 3 new = 71 total
+  ✅ Merged: 88 existing + 3 new = 91 total
 
 📌 Step 5/6: Syncing with Google Sheets...
 
 📊 Syncing metrics with sheet...
-💾 Snapshot saved: 68 TikTok rows
-📋 Found 68 existing URLs in sheet
+💾 Snapshot saved: 95 TikTok rows
+📋 Found 95 existing URLs in sheet
 📝 Inserting 3 new videos...
 ✅ Inserted 3 new videos
-  1. 12 Years Later...
-  2. Flashback to 2013...
-  3. VFA Weekly Results Announcement...
-📋 Found 71 existing URLs in sheet
-✅ Row 3: Ai đó xin hãy mang họ trở lại giúp chúng... | 1253 views
-✅ Row 4: Về Latin Pop thì tụi anh nắm trùm 💯 #Su... | 519 views
-✅ Row 5: Họ không ngại, chúng tôi ngại  #EXO #엑소 ... | 337 views
-✅ Row 6: Pop Latin? Chuyện nhỏ với các anh chú #S... | 1288 views
-✅ Row 7: Kpop xưa vẫn là huyền thoại  #KPOPNOW #O... | 478 views
-✅ Row 8: Tropical House – thể loại nhạc từng một ... | 1216 views
-✅ Row 9: Có thể bạn không biết: Trước YG và JYP, ... | 1409 views
-✅ Row 10: Park Jiyeon là thần  #Jiyeon #T_ARA #kpo... | 1505 views
-✅ Row 11: Hãy cho chúng tôi thấy rằng chúng tôi kh... | 36000 views
-✅ Row 12: Nhạc lên đến đâu da gà rần rần đến đó  #... | 1541 views
-✅ Row 13: Vì cuộc sống đâu là dễ dàng... #KPOP #KP... | 1011 views
-✅ Row 14: Đâu là ca khúc bạn yêu thích nhất của họ... | 1285 views
-✅ Row 15: ✨ HAPPY NEW YEAR 2026 ✨ K-POP NOW xin gử... | 385 views
-✅ Row 16: Một mình cô ấy cân 1/2 bài hát 😍 #Soyeo... | 1444 views
-✅ Row 17: Tôi đã tốn 3 lít nước mắt, còn bạn thì s... | 1316 views
-✅ Row 18: Cô ấy từng được kì vọng sẽ trở thành sol... | 1475 views
-✅ Row 19: Sau sân khấu ra mắt này, họ không còn xu... | 2179 views
-✅ Row 20: Có ai nhận ra điểm chung đó là gì không?... | 1477 views
-✅ Row 21: Ngại điên 🤦🏻‍♂️👨🏻‍🦯 #EXO #엑소 #KPOP ... | 1043 views
-✅ Row 22: Các anh chú 20 năm tuổi nghề này vẫn còn... | 1365 views
-✅ Row 23: Đúng nhận sai cãi 🎵 #onrainydays #BEAST... | 2222 views
-✅ Row 24: Có ai còn nhớ tới những cô gái này không... | 12000 views
-✅ Row 25: Hình ảnh này sao quen quá 😅😅😅 #NCT #J... | 1026 views
-✅ Row 26: 🎉 CÔNG BỐ KẾT QUẢ ONLINE EVENT THÁNG 1-... | 372 views
-✅ Row 27: Các nhóm khác: Nhật tiến, Mỹ tiến, Trung... | 3553 views
-✅ Row 28: LUCKY DRAW đã chính thức được ra mắt rồi... | 315 views
-✅ Row 29: Đây chính là thời kỳ hoàng kim của K-POP... | 1582 views
-✅ Row 30: Và còn rất nhiều bản nhạc huyền thoại kh... | 1236 views
-✅ Row 31: Đây mới thực sự là màu sắc nguyên bản củ... | 1911 views
-✅ Row 32: Fan đông chưa chắc thắng – fan chăm mới ... | 1026 views
-✅ Row 33: Quý công ty S giấu tên đã phát hành bản ... | 13000 views
-✅ Row 34: Đây mới đúng là K-POP mà chúng tôi biết ... | 25000 views
-✅ Row 35: 100 điểm cho sự thẳng thắn và thực tế nà... | 1253 views
-✅ Row 36: Một bài hát có được đẩy lên cao trào khô... | 156000 views
-✅ Row 37: Diễn xuất của Yoona là thần!!! 🩷  #SNSD... | 1378 views
-✅ Row 38: Quả là “con ghẻ” quốc dân, “con cưng” qu... | 2550 views
-✅ Row 39: Đó là lý do vì sao những special stage t... | 1353 views
-✅ Row 40: màn cover “thảm họa” này có lẽ đến 50 nă... | 3364 views
-✅ Row 41: Bạn biết được bao nhiêu bài hát trong da... | 12000 views
-✅ Row 42: Họ đích thị là những "tắc kè hoa" của Kp... | 1751 views
-✅ Row 43: Ai đó có thể cho mình biết cách cô ấy đã... | 204000 views
-✅ Row 44: Yêu cái cách các nghệ sĩ của YG Entertai... | 3510 views
-✅ Row 45: Có lẽ fan K-POP lâu năm đều không xa lạ ... | 114000 views
-✅ Row 46: Âm nhạc là liều thuốc chữa lành, nhưng đ... | 7662 views
-✅ Row 47: Mấy ông mấy bà đã sẵn sàng chưaaaaaaaaaa... | 21000 views
-✅ Row 48: Đây sẽ mãi là một unit biểu tượng của Kp... | 25000 views
-✅ Row 49: Ta nói nó sanggggg gì đâu ✨ #SNSD #소녀시대 ... | 60000 views
-✅ Row 50: Có ai còn nhớ tới cái tên 'Henry' không?... | 9648 views
-✅ Row 51: Một bài hát xuất sắc về cả phần nghe lẫn... | 32000 views
-✅ Row 52: Bạn có nhận ra rằng những màn collab như... | 18000 views
-✅ Row 53: Có ai còn nhớ giai điệu này không? 🎵 #T... | 32000 views
-✅ Row 54: Một thời để nhớ 🥺 #BEAST #Midnight #KPO... | 138000 views
-✅ Row 55: Có ai nhận ra giai điệu này không? 🎵🩷 ... | 223000 views
-✅ Row 56: Điểu mà chúng ta sẽ KHÔNG THỂ NÀO được t... | 40000 views
-✅ Row 57: Bạn có đồng tình với ý kiến này? 🎵 #KAR... | 166000 views
-✅ Row 58: 🌟 11 THÀNH VIÊN WANNA ONE GỬI THƯ TAY Đ... | 8727 views
-✅ Row 59: Girls' Generation khi ấy sẽ là Ajuma Gen... | 1985 views
-✅ Row 60: Old but gold ✨ #SuperJunior #kpop #oldkp... | 50000 views
-✅ Row 61: Đừng quên anh cũng là idol đó nha 🤣🤣🤣... | 1781 views
-✅ Row 62: Bạn biết được bao nhiêu bài hát trong da... | 57000 views
-✅ Row 63: Có đúng là vậy không nhỉ? 🤔 #TARA #티아라 ... | 7324 views
-✅ Row 64: Quay lại thời hoàng kim của K-POP thế hệ... | 42000 views
-✅ Row 65: Cảm ơn vì những kỉ niệm quý giá này 🩷 #... | 2891 views
-✅ Row 66: Có ai nổi da gà ngay khi intro vang lên ... | 503000 views
-✅ Row 67: 📣 NHẮC BẠN: K-POP NOW đang tìm kiếm nhữ... | 1920 views
-✅ Row 68: i-dle chính thức trở lại đường đua K-POP... | 2375 views
-✅ Row 69: 📣 Chào mừng bạn đến với K-POP NOW 🩷 #K... | 2777 views
-✅ Row 70: SNSD và màn “hô biến” cực ảo với hologra... | 80000 views
-✅ Row 71: Đã 12 năm rồi... #APINK #NoNoNo #KPOPNOW... | 636 views
-✅ Row 72: 2013 hiện ra trước mắt  #APINK #NoNoNo #... | 564 views
-✅ Row 73: Công bố kết quả tuần VFA 🎉 #KPOPNOW #KP... | 134 views
+  1. Forgotten EDM Gems...
+  2. Timeless Legends from 2018 to 2026...
+  3. Nostalgic Music Memories...
+📋 Found 98 existing URLs in sheet
+✅ Row 3: Và Dani – thành viên hụt của nhóm cũng x... | 3021 views
+✅ Row 4: Nhạc ồn thì thời nào chẳng có, nhưng khô... | 9771 views
+✅ Row 5: Kpop xưa vẫn là miền kí ức tươi đẹp #kpo... | 98000 views
+✅ Row 6: HyoRiSoo +1 đối thủ nặng kí  #Hyoyeon #S... | 84000 views
+✅ Row 7: Đã từng có một thời... #T_ARA #티아라 #kpop... | 323000 views
+✅ Row 8: Còn đây là vị trí số 1 trong lòng chúng ... | 9960 views
+✅ Row 10: Đề nghị mấy anh diễn bài này trong con s... | 13000 views
+✅ Row 11: Với K-POP NOW, tham gia ngay, quà liền t... | 911 views
+✅ Row 13: Danh tiếng có thể sụt giảm nhưng chất lư... | 12000 views
+✅ Row 14: Nhạc mùa hè là phải sôi động cỡ nàyyy #B... | 35000 views
+✅ Row 15: Một thời đã xa… #PageOne #OST #kpop #KPO... | 43000 views
+✅ Row 16: Mãi là một huyền thoại  #BEAST #Fiction ... | 10000 views
+✅ Row 17: Không "dị" không là Sunny Hill #SunnyHil... | 2116 views
+✅ Row 18: Nếu có một điều ước, tôi ước họ sẽ quảng... | 56000 views
+✅ Row 19: Thành viên đầu tiên của SNSD chính thức ... | 8876 views
+✅ Row 21: Chúng tôi gọi đây là một huyền thoại #Pr... | 52000 views
+✅ Row 22: Bạch nguyệt quang của show sống còn 🌸 #... | 32000 views
+✅ Row 24: Tình chỉ đẹp khi tình dang dở 🩷 #T_ARA ... | 155000 views
+✅ Row 25: Cổng bình chọn tuần mới đã mở rồi 🩷 Vot... | 1378 views
+✅ Row 26: Bạn còn nhớ cái tên T-ARA N4 không? #T_A... | 14000 views
+✅ Row 27: Đã 12 năm rồi... #APINK #NoNoNo #KPOPNOW... | 23000 views
+✅ Row 29: Công bố kết quả tuần VFA 🎉 #KPOPNOW #KP... | 1291 views
+✅ Row 30: Ai đó xin hãy mang họ trở lại giúp chúng... | 2358 views
+✅ Row 33: Pop Latin? Chuyện nhỏ với các anh chú #S... | 3363 views
+✅ Row 34: Kpop xưa vẫn là huyền thoại  #KPOPNOW #O... | 1546 views
+✅ Row 35: Tropical House – thể loại nhạc từng một ... | 2190 views
+✅ Row 36: Có thể bạn không biết: Trước YG và JYP, ... | 2316 views
+✅ Row 37: Park Jiyeon là thần  #Jiyeon #T_ARA #kpo... | 2420 views
+✅ Row 38: Hãy cho chúng tôi thấy rằng chúng tôi kh... | 72000 views
+✅ Row 39: Nhạc lên đến đâu da gà rần rần đến đó  #... | 2482 views
+✅ Row 40: Vì cuộc sống đâu là dễ dàng... #KPOP #KP... | 1815 views
+✅ Row 41: Đâu là ca khúc bạn yêu thích nhất của họ... | 2060 views
+✅ Row 42: ✨ HAPPY NEW YEAR 2026 ✨ K-POP NOW xin gử... | 991 views
+✅ Row 43: Một mình cô ấy cân 1/2 bài hát 😍 #Soyeo... | 2204 views
+✅ Row 44: Tôi đã tốn 3 lít nước mắt, còn bạn thì s... | 1978 views
+✅ Row 45: Cô ấy từng được kì vọng sẽ trở thành sol... | 3286 views
+✅ Row 46: Sau sân khấu ra mắt này, họ không còn xu... | 2790 views
+✅ Row 47: Có ai nhận ra điểm chung đó là gì không?... | 2085 views
+✅ Row 48: Ngại điên 🤦🏻‍♂️👨🏻‍🦯 #EXO #엑소 #KPOP ... | 1578 views
+✅ Row 49: Các anh chú 20 năm tuổi nghề này vẫn còn... | 1881 views
+✅ Row 50: Đúng nhận sai cãi 🎵 #onrainydays #BEAST... | 2751 views
+✅ Row 51: Có ai còn nhớ tới những cô gái này không... | 12000 views
+✅ Row 52: Hình ảnh này sao quen quá 😅😅😅 #NCT #J... | 1433 views
+✅ Row 53: 🎉 CÔNG BỐ KẾT QUẢ ONLINE EVENT THÁNG 1-... | 749 views
+✅ Row 54: Các nhóm khác: Nhật tiến, Mỹ tiến, Trung... | 4443 views
+✅ Row 55: LUCKY DRAW đã chính thức được ra mắt rồi... | 861 views
+✅ Row 56: Đây chính là thời kỳ hoàng kim của K-POP... | 1926 views
+✅ Row 57: Và còn rất nhiều bản nhạc huyền thoại kh... | 1563 views
+✅ Row 58: Đây mới thực sự là màu sắc nguyên bản củ... | 3095 views
+✅ Row 59: Fan đông chưa chắc thắng – fan chăm mới ... | 1350 views
+✅ Row 60: Quý công ty S giấu tên đã phát hành bản ... | 20000 views
+✅ Row 61: Đây mới đúng là K-POP mà chúng tôi biết ... | 30000 views
+✅ Row 62: 100 điểm cho sự thẳng thắn và thực tế nà... | 1524 views
+✅ Row 63: Một bài hát có được đẩy lên cao trào khô... | 222000 views
+✅ Row 64: Diễn xuất của Yoona là thần!!! 🩷  #SNSD... | 1618 views
+✅ Row 65: Quả là “con ghẻ” quốc dân, “con cưng” qu... | 3030 views
+✅ Row 66: Đó là lý do vì sao những special stage t... | 1560 views
+✅ Row 67: màn cover “thảm họa” này có lẽ đến 50 nă... | 3625 views
+✅ Row 68: Bạn biết được bao nhiêu bài hát trong da... | 25000 views
+✅ Row 69: Họ đích thị là những "tắc kè hoa" của Kp... | 1986 views
+✅ Row 70: Ai đó có thể cho mình biết cách cô ấy đã... | 226000 views
+✅ Row 71: Yêu cái cách các nghệ sĩ của YG Entertai... | 3995 views
+✅ Row 72: Có lẽ fan K-POP lâu năm đều không xa lạ ... | 138000 views
+✅ Row 73: Âm nhạc là liều thuốc chữa lành, nhưng đ... | 11000 views
+✅ Row 74: Mấy ông mấy bà đã sẵn sàng chưaaaaaaaaaa... | 29000 views
+✅ Row 75: Đây sẽ mãi là một unit biểu tượng của Kp... | 29000 views
+✅ Row 76: Ta nói nó sanggggg gì đâu ✨ #SNSD #소녀시대 ... | 138000 views
+✅ Row 77: Có ai còn nhớ tới cái tên 'Henry' không?... | 12000 views
+✅ Row 78: Một bài hát xuất sắc về cả phần nghe lẫn... | 35000 views
+✅ Row 79: Bạn có nhận ra rằng những màn collab như... | 20000 views
+✅ Row 80: Có ai còn nhớ giai điệu này không? 🎵 #T... | 38000 views
+✅ Row 81: Một thời để nhớ 🥺 #BEAST #Midnight #KPO... | 161000 views
+✅ Row 82: Có ai nhận ra giai điệu này không? 🎵🩷 ... | 256000 views
+✅ Row 83: Điểu mà chúng ta sẽ KHÔNG THỂ NÀO được t... | 45000 views
+✅ Row 84: Bạn có đồng tình với ý kiến này? 🎵 #KAR... | 227000 views
+✅ Row 85: 🌟 11 THÀNH VIÊN WANNA ONE GỬI THƯ TAY Đ... | 9396 views
+✅ Row 86: Girls' Generation khi ấy sẽ là Ajuma Gen... | 2110 views
+✅ Row 87: Old but gold ✨ #SuperJunior #kpop #oldkp... | 56000 views
+✅ Row 88: Đừng quên anh cũng là idol đó nha 🤣🤣🤣... | 1877 views
+✅ Row 89: Bạn biết được bao nhiêu bài hát trong da... | 65000 views
+✅ Row 90: Có đúng là vậy không nhỉ? 🤔 #TARA #티아라 ... | 7497 views
+✅ Row 91: Quay lại thời hoàng kim của K-POP thế hệ... | 46000 views
+✅ Row 92: Cảm ơn vì những kỉ niệm quý giá này 🩷 #... | 2974 views
+✅ Row 93: Có ai nổi da gà ngay khi intro vang lên ... | 537000 views
+✅ Row 94: 📣 NHẮC BẠN: K-POP NOW đang tìm kiếm nhữ... | 2004 views
+✅ Row 95: i-dle chính thức trở lại đường đua K-POP... | 2470 views
+✅ Row 96: 📣 Chào mừng bạn đến với K-POP NOW 🩷 #K... | 3715 views
+✅ Row 97: SNSD và màn “hô biến” cực ảo với hologra... | 94000 views
+✅ Row 98: Vậy là các bạn đã bỏ quên 2 siêu phẩm ED... | 22000 views
+✅ Row 99: Từ 2018 đến 2026 vẫn là huyền thoại ‼️ #... | 1129 views
+✅ Row 100: Có một thời ngày nào cũng phải nghe mới ... | 27 views
 
-📝 Updating 497 cells...
+📝 Updating 637 cells...
 ✅ Sheet updated!
-🔄 Sorting 71 rows by date (newest first)...
+🔄 Sorting 98 rows by date (newest first)...
 ✅ Sorted and renumbered!
 
 ═══════════════════════════════════════════
    Summary
 ═══════════════════════════════════════════
-📊 Scraped: 71 videos from TikTok
+📊 Scraped: 91 videos from TikTok
 🆕 Inserted: 3 new videos
-✅ Updated: 71 videos
+✅ Updated: 91 videos
 
 📌 Step 6/6: Selective Share Scraping...
 
@@ -146,44 +162,98 @@
    Selective Share Scraping (5%+ Like Growth)
 ═══════════════════════════════════════════
 
-📊 Found 9 videos with 5%+ like growth:
-  1. +6.25% | Likes: 16 → 17
-  2. NEW | Likes: 0 → 41
-  3. NEW | Likes: 0 → 52
-  4. NEW | Likes: 0 → 9
-  5. +45.45% | Likes: 11 → 16
-  6. +11.9% | Likes: 42 → 47
-  7. +34.94% | Likes: 83 → 112
-  8. +8.01% | Likes: 2623 → 2833
-  9. +5.78% | Likes: 1523 → 1611
-📋 Found 71 existing URLs in sheet
+📊 Found 27 videos with 5%+ like growth:
+  1. NEW | Likes: 0 → 1
+  2. NEW | Likes: 0 → 1276
+  3. NEW | Likes: 0 → 29
+  4. +24.32% | Likes: 74 → 92
+  5. +44.57% | Likes: 341 → 493
+  6. +64.65% | Likes: 2764 → 4551
+  7. +14.37% | Likes: 1392 → 1592
+  8. +13.58% | Likes: 243 → 276
+  9. +7.46% | Likes: 885 → 951
+  10. +62.5% | Likes: 8 → 13
+  11. +6.3% | Likes: 683 → 726
+  12. +8.37% | Likes: 1648 → 1786
+  13. +8.49% | Likes: 2721 → 2952
+  14. +9.06% | Likes: 287 → 313
+  15. +6.52% | Likes: 46 → 49
+  16. +6.04% | Likes: 3259 → 3456
+  17. +6.94% | Likes: 1153 → 1233
+  18. +7.97% | Likes: 627 → 677
+  19. +8.04% | Likes: 5536 → 5981
+  20. +6.25% | Likes: 64 → 68
+  21. +6.56% | Likes: 122 → 130
+  22. +5.95% | Likes: 504 → 534
+  23. +5.98% | Likes: 184 → 195
+  24. +9.39% | Likes: 1310 → 1433
+  25. +10.71% | Likes: 1429 → 1582
+  26. +35.16% | Likes: 2722 → 3679
+  27. +10% | Likes: 10000 → 11000
+📋 Found 98 existing URLs in sheet
 
 🔄 Starting share scraping...
 
-[1/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7606333668570844423
-  ✅ Row 31: 2 shares
-[2/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7610088478759603477
-  ✅ Row 3: 2 shares
-[3/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7610080388773399829
-  ✅ Row 4: 1 shares
-[4/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7610031021320310036
-  ✅ Row 5: 0 shares
-[5/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7609707150318849301
-  ✅ Row 8: 1 shares
-[6/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7609403866056068372
-  ✅ Row 6: 2 shares
-[7/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7609642971469778197
-  ✅ Row 9: 5 shares
-[8/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7608591882079259925
-  ✅ Row 14: 178 shares
-[9/9] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7603406016818040071
-  ✅ Row 52: 22 shares
+[1/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7614756207479377173
+  ✅ Row 3: 0 shares
+[2/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7614529359965293844
+  ✅ Row 4: 20 shares
+[3/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7614512732011793685
+  ✅ Row 5: 4 shares
+[4/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7614162698242133269
+  ✅ Row 6: 6 shares
+[5/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7614013125620141333
+  ✅ Row 7: 24 shares
+[6/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7613791493332962580
+  ✅ Row 8: 90 shares
+[7/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7613640396307959060
+  ✅ Row 9: 37 shares
+[8/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7613392711973948693
+  ✅ Row 11: 4 shares
+[9/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7613047407437221140
+  ✅ Row 13: 23 shares
+[10/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7612996838932614421
+  ✅ Row 14: 1 shares
+[11/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7612666117496130836
+  ✅ Row 16: 8 shares
+[12/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7612518792484195604
+  ✅ Row 17: 77 shares
+[13/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7612158014380100884
+  ✅ Row 18: 122 shares
+[14/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7611932507394575636
+  ✅ Row 19: 9 shares
+[15/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7611786444469734676
+  ✅ Row 20: 2 shares
+[16/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7611565817800428820
+  ✅ Row 21: 102 shares
+[17/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7610675762668129557
+  ✅ Row 25: 16 shares
+[18/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7610088478759603477
+  ✅ Row 30: 6 shares
+[19/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7608591882079259925
+  ✅ Row 41: 363 shares
+[20/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7607473988041837845
+  ✅ Row 48: 3 shares
+[21/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7606001797555064072
+  ✅ Row 61: 9 shares
+[22/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7605496186341985554
+  ✅ Row 63: 41 shares
+[23/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7605106121963097351
+  ✅ Row 68: 5 shares
+[24/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7604363273563049234
+  ✅ Row 71: 41 shares
+[25/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7603775090857118984
+  ✅ Row 77: 34 shares
+[26/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7603406016818040071
+  ✅ Row 79: 69 shares
+[27/27] Scraping: https://www.tiktok.com/@kpopnow.vn/video/7602139094361181458
+  ✅ Row 87: 138 shares
 
 ═══════════════════════════════════════════
    Selective Share Summary
 ═══════════════════════════════════════════
-✅ Success: 9/9
-❌ Failed: 0/9
+✅ Success: 27/27
+❌ Failed: 0/27
 
 ✅ Done!
 👋 Browser closed

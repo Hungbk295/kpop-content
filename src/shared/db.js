@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const config = require('../config');
 
+function normalizeTitleKey(title) {
+    return String(title).toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
 class SnapshotDB {
     constructor() {
         const dbPath = path.resolve(config.DATA_DIR, 'snapshot.db');
@@ -28,6 +32,12 @@ class SnapshotDB {
         }
 
         this.db.exec(`
+            CREATE TABLE IF NOT EXISTS facebook_title_cache (
+                title_raw_key TEXT PRIMARY KEY,
+                ai_title      TEXT NOT NULL,
+                ai_describe   TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS tiktok (
                 row_num INTEGER PRIMARY KEY,
                 no TEXT,
@@ -107,6 +117,79 @@ class SnapshotDB {
      */
     getSnapshot(table) {
         return this.db.prepare(`SELECT * FROM ${table} ORDER BY row_num`).all();
+    }
+
+    /**
+     * Get persistent title cache for Facebook as a Map.
+     * Key: normalized title_raw, Value: { ai_title, ai_describe }
+     */
+    getTitleCacheMap() {
+        const rows = this.db.prepare('SELECT * FROM facebook_title_cache').all();
+        const map = new Map();
+        for (const row of rows) {
+            map.set(row.title_raw_key, { ai_title: row.ai_title, ai_describe: row.ai_describe });
+        }
+        return map;
+    }
+
+    /**
+     * Save merged posts as the new Facebook snapshot (source of truth).
+     * Replaces all existing rows.
+     * @param {Array<Object>} posts - merged posts with mainContent, describe, etc.
+     * @returns {number} number of rows saved
+     */
+    saveSnapshotFromPosts(posts) {
+        const deleteStmt = this.db.prepare('DELETE FROM facebook');
+        const insertStmt = this.db.prepare(`
+            INSERT INTO facebook (row_num, no, title, "describe", format, date, status, link_to_post, "view", "like", "comment", share, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        const transaction = this.db.transaction(() => {
+            deleteStmt.run();
+            posts.forEach((post, i) => {
+                insertStmt.run(
+                    i + 1,
+                    String(i + 1),
+                    post.mainContent || post.title || '',
+                    post.describe || '',
+                    post._format || post.postType || '',
+                    post.date || '',
+                    post._status || 'Published',
+                    post.url || '',
+                    String(post.views || 0),
+                    String(post.engagement || 0),
+                    String(post.comments || 0),
+                    String(post.shares || 0),
+                    post._note || ''
+                );
+            });
+        });
+
+        transaction();
+        return posts.length;
+    }
+
+    /**
+     * Upsert AI-processed titles into the persistent cache.
+     * @param {Array<Object>} posts - merged posts with .title (raw) + .mainContent + .describe
+     * @returns {number} number of entries upserted
+     */
+    saveBulkTitleCache(posts) {
+        const stmt = this.db.prepare(
+            `INSERT OR REPLACE INTO facebook_title_cache (title_raw_key, ai_title, ai_describe)
+             VALUES (?, ?, ?)`
+        );
+        let count = 0;
+        const transaction = this.db.transaction(() => {
+            for (const post of posts) {
+                if (!post.title || !post.mainContent) continue;
+                stmt.run(normalizeTitleKey(post.title), post.mainContent, post.describe || '');
+                count++;
+            }
+        });
+        transaction();
+        return count;
     }
 
     close() {

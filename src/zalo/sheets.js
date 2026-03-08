@@ -82,8 +82,9 @@ class ZaloSheetsManager {
 
         console.log(`\n📊 Syncing MiniApp and OA metrics to sheet...`);
 
-        const now = new Date();
-        const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateStr = `${yesterday.getDate().toString().padStart(2, '0')}/${(yesterday.getMonth() + 1).toString().padStart(2, '0')}/${yesterday.getFullYear()}`;
 
         const cols = this.sheetConfig.COLUMNS;
         const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;

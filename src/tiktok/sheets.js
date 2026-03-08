@@ -331,9 +331,10 @@ class GoogleSheetsManager {
         const totalRows = rows.length;
         if (totalRows === 0) return;
 
+        // newest (top) gets largest number, oldest (bottom) gets 1
         const numbers = [];
         for (let i = 0; i < totalRows; i++) {
-            numbers.push([i + 1]);
+            numbers.push([totalRows - i]);
         }
 
         await this.sheets.spreadsheets.values.update({
@@ -390,9 +391,9 @@ class GoogleSheetsManager {
             return dateB - dateA; // descending
         });
 
-        // Renumber column A (index 0)
+        // Renumber column A (index 0): newest (top) gets largest number, oldest (bottom) gets 1
         rows.forEach((row, i) => {
-            row[0] = i + 1;
+            row[0] = rows.length - i;
         });
 
         // Pad rows to ensure all have 13 columns (A-M)

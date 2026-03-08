@@ -86,9 +86,9 @@ module.exports = {
 
     // AI API config (OpenAI-compatible endpoint)
     AI_API: {
-        endpoint: process.env.AI_API_ENDPOINT || 'http://localhost:8045/v1/chat/completions',
-        apiKey: process.env.AI_API_KEY || 'sk-3e7fc5fd772041749dc409d0144f97a4',
-        model: process.env.AI_API_MODEL || 'gemini-3-flash'
+        endpoint: process.env.AI_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
+        apiKey: process.env.AI_API_KEY || '',
+        model: process.env.AI_API_MODEL || 'gpt-4o-mini'
     },
 
     // Data backup directory
@@ -121,6 +121,23 @@ module.exports = {
             TIKTOK_7DAY_CHANGE: 'I'
         },
         DATA_START_ROW: parseInt(process.env.SNS_DATA_START_ROW, 10) || 6
+    },
+
+    // Zalo Ads config
+    ZALO_ADS: {
+        ADS_URL: process.env.ZALO_ADS_URL || 'https://ads.zalo.me/client/home',
+        CAMPAIGN_DETAIL_URL: 'https://ads.zalo.me/client/campaigns/detail',
+
+        // List of active campaign IDs - update when new ads start running
+        CAMPAIGN_IDS: [
+            '6640483',
+            '6638128',
+        ],
+
+        SHEETS: {
+            SPREADSHEET_ID: process.env.ZALO_ADS_SPREADSHEET_ID || '1O-TCnUJrh3XlJq5dhDA1F7BQed0z3uo0x-hQx3ySn14',
+            DATA_START_ROW: parseInt(process.env.ZALO_ADS_DATA_START_ROW, 10) || 3
+        }
     },
 
     // Zalo config (reuses TikTok browser profile)

@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════
   FACEBOOK - Log Session
-  2026-02-24T02:07:34.968Z
+  2026-03-08T05:55:28.676Z
 ═══════════════════════════════════════════
 
 📝 Logging to: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/logs/facebook.txt
@@ -9,332 +9,101 @@
    (Export Data Flow)
 ═══════════════════════════════════════════
 
-📌 Step 1/7: Initializing browser...
+📌 Step 1/6: Initializing browser...
 Launching browser with persistent profile...
 User data dir: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/browser-data-fb
 Browser ready!
 
-📌 Step 2/7: Navigating to Facebook Content Library...
+📌 Step 2/6: Navigating to Facebook Content Library...
 Navigating to Facebook Content Library...
 Facebook Content Library loaded!
 
-📌 Step 3/7: Using Export Data flow...
+📌 Step 3/6: Using Export Data flow...
 Starting Export Data flow...
 Step 1: Looking for Export data button...
-Clicked Export data button
-Step 2: Looking for Create new data report...
-Clicked Create new data report
-Step 3: Clicking Select date range...
-Clicked Select date range
-Step 3b: Selecting "This year"...
-Selected "This year: Jan 1 - Feb 24"
-Step 4: Looking for "Create report (.csv)" button...
-Clicked "Create report (.csv)"
-Step 5: Waiting 5s before navigating to Report History...
-Step 6: Navigating to Report History...
-Step 7: Waiting for first report to have download link...
-   Report still generating... (0s)
-   Report still generating... (2s)
-   Report still generating... (4s)
-   Report still generating... (6s)
-Download link found!
-Step 8: Downloading CSV...
-   Download URL: https://l.facebook.com/l.php?u=https%3A%2F%2Fscontent.fhan18-1.fna.fbcdn.net%2Fm1%2Fv%2Ft6%2FAn-HZ3f...
-Waiting for download to start...
-Downloaded: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/Jan-27-2026_Feb-24-2026_Content_Publish time_Summary_1365698738562595.csv
+Attempt 1 failed: elementHandle.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    57 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
 
-📌 Step 4/7: Parsing CSV: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/Jan-27-2026_Feb-24-2026_Content_Publish time_Summary_1365698738562595.csv
-CSV Headers: [
-  "Post ID",
-  "Page ID",
-  "Page name",
-  "Title",
-  "Duration (sec)",
-  "Publish time",
-  "Permalink",
-  "Post type",
-  "Data comment",
-  "Date",
-  "Comments",
-  "Distribution",
-  "Impressions",
-  "Interactions",
-  "Net follows",
-  "Reactions",
-  "Saves",
-  "Shares",
-  "Viewers",
-  "Views",
-  "Average Seconds viewed",
-  "Seconds viewed"
-]
-Column mapping: {
-  "title": 3,
-  "date": 5,
-  "type": 7,
-  "views": 19,
-  "reach": 12,
-  "engagement": 15,
-  "comments": 10,
-  "shares": 17,
-  "url": 6
-}
-Parsed 88 posts from CSV
-💾 Backup saved to /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/facebook_metrics_2026-02-24.json
-
-📌 Step 5/7: Compare & merge with DB snapshot...
-🔐 Initializing Google Sheets API for Facebook...
-✅ Google Sheets API ready!
-💾 Snapshot saved: 176 Facebook rows
-
-🔄 Compare & Merge (facebook): 88 crawled vs 176 in DB
-  📋 Existing URLs (skip AI, metrics only): 36
-  🤖 New URLs (use AI for title+describe): 52
-🤖 Processing 52 items...
-🤖 Calling AI: 52 items in 6 batch(es)...
-  1. [AI] K-POP NOW Lucky Number Minigame
-  2. [AI] IVE Announces Comeback with Pre-release Single 'BA
-  3. [AI] Rosé Confirmed to Perform at the 2026 GRAMMY Award
-  4. [AI] Win Official Albums in K-POP NOW’s Jan-Feb Online 
-  5. [AI] Become a K-POP NOW Ambassador: Turn Passion into V
-  6. [AI] Wanna One Members Share Heartfelt Letters to Wanna
-  7. [AI] Controversy Surrounding Kim Seon Ho’s Private Comp
-  8. [AI] Rosé’s "APT." Misses Out on Wins at the 2026 GRAMM
-  9. [AI] Final 7-Day Countdown for K-POP NOW Ambassador App
-  10. [AI] Kim Seon Ho Faces Scrutiny Over Potential Tax Evas
-  ✅ Batch [1/6] done
-  11. [AI] Kim Seon Ho Apologizes for Tax and Management Issu
-  12. [AI] Final Call: K-POP NOW Ambassador Season 1 Recruitm
-  13. [AI] BLACKPINK Reveals Tracklist for Mini Album "DEADLI
-  14. [AI] Apink's Bomi and Producer Rado to Wed in May
-  15. [AI] KIIIKIII’s "404 (NEW ERA)" Climbs the Melon Charts
-  16. [AI] ZB1’s Seok Matthew and Park Gunwook Sign with WAKE
-  17. [AI] CORTIS Announces New Album Release for April
-  18. [AI] Haruto’s Recent Livestream Comments Spark Controve
-  19. [AI] SONEs Encouraged to Wait One More Year for SNSD
-  20. [AI] SM Entertainment Freezes Assets of EXO-CBX Members
-  ✅ Batch [2/6] done
-  21. [AI] IVE's Jang Wonyoung Donates 200 Million Won to Ped
-  22. [AI] Jessica Jung to Bring 'Reflections' Tour to HCMC o
-  23. [AI] IVE's 'Bang Bang' Hits New Chart Peaks Despite No 
-  24. [AI] Four Members to Leave ZEROBASEONE; Group to Contin
-  25. [AI] WINNER's Song Mino Faces Potential Prison Sentence
-  26. [AI] Lee Hangyul to Leave PocketDol Studio After 14 Yea
-  27. [AI] BTS's Jungkook Named Global Ambassador for Hublot
-  28. [AI] K-POP NOW Mini App Opens Voting for Zalo Advertise
-  29. [AI] K-POP NOW Announces Winners of Jan-Feb Online Even
-  30. [AI] NCT Unit JNJM Collaborates with Converse for Debut
-  ✅ Batch [3/6] done
-  31. [AI] Lucky Draw Event Launches on K-POP NOW Zalo Mini A
-  32. [AI] Congratulations to ARMY
-  33. [AI] Lisa Stuns in New Valentine’s Day Photoshoot
-  34. [AI] Final 3 Hours to Vote for K-POP NOW Advertisements
-  35. [AI] K-POP NOW Happy New Year 2026 Message
-  36. [AI] RIIZE Releases MV for Second Japanese Single 'All 
-  37. [AI] Vote for the Best Gen 5 K-pop Vocalist
-  38. [AI] Win Daily Lucky Money on K-POP NOW Mini App
-  39. [AI] IVE Reveals 'BANGERS' Concept Photos for New Album
-  40. [AI] A-List K-pop Idol Reportedly Has 4-Year-Old Child
-  ✅ Batch [4/6] done
-  41. [AI] Lucky Draw Event on Kpop Now Mini App
-  42. [AI] BLACKPINK's Fierce Visuals in 'DEADLINE' Posters
-  43. [AI] NCT JMJN's Visual Explosion in 'BOTH SIDES' Teaser
-  44. [AI] EVERGLOW Unveils Concept Photos for 4th Mini Album
-  45. [AI] BLACKPINK Achieves Prestigious Red Diamond Creator
-  46. [AI] Gen 5 'Golden Voice' Voting Update: Kim Taerae Lea
-  47. [AI] HEARTS2HEARTS Enters Melon Top 10 with 'RUDE!'
-  48. [AI] I.O.I Confirms 9-Member Reunion for 10th Anniversa
-  49. [AI] NCT JNJM Officially Debuts with 'BOTH SIDES'
-  50. [AI] IVE Achieves Real-Time All-Kill with Pre-release '
-  ✅ Batch [5/6] done
-[WARN]   ⚠️ Batch [6/6] failed: AI API error: 429 Too Many Requests
-
-⏳ Retrying 1 failed batch(es) after 5s delay...
-[WARN]   ⚠️ Batch [Retry 6/6] failed again: AI API error: 429 Too Many Requests
-✅ Content processing complete!
-  ✅ Merged: 36 existing + 52 new = 88 total
-
-📌 Step 6/7: Syncing with Google Sheets (Main Tab)...
-💾 Snapshot saved: 176 Facebook rows
-📋 Found 518 existing entries in Facebook sheet
-✅ Update Row 3: Ai đó xin hãy mang họ trở lại giúp chúng...
-✅ Update Row 5: Ai còn nhớ cái tên KARD không?
-
-#KARD #O...
-✅ Update Row 7: Về Latin Pop thì tụi anh nắm trùm 💯
-
-#S...
-✅ Update Row 9: Đúng nhận sai 🤫
-
-#Jiyeon #T_ARA #KPOP #...
-✅ Update Row 19: ❓ Có ai cũng đang bị mắc kẹt như ad khôn...
-✅ Update Row 29: Vì cuộc sống đâu là dễ dàng...
-
-#KPOP #K...
-✅ Update Row 34: Ngày ấy từng có một cái tên AFS dành riê...
-✅ Update Row 35: Một mình chị cân nguyên nửa bài hát 😀
-
-...
-✅ Update Row 40: Cô ấy từng được kì vọng sẽ trở thành sol...
-✅ Update Row 44: Ngại điên 🥲
-
-#EXO #엑소 #KPOP #KPOPNOW #K...
-✅ Update Row 48: Bạn có biết những bài hát trong danh sác...
-✅ Update Row 53: Nghe nói vụ quay MV ngoài đồng đang hot ...
-✅ Update Row 65: Hình ảnh này sao quen quá 🥲
-
-#J4F #NCT ...
-✅ Update Row 73: Nhạc vang lên là thanh xuân như ùa về tr...
-✅ Update Row 74: 100 điểm cho sự thẳng thắn này 💯😆😆😆
-...
-✅ Update Row 90: Annie (ALLDAY PROJECT) và khoảnh khắc ch...
-✅ Update Row 92: Một từ thôi: VUÝP 👍🏻👍🏻👍🏻
-
-#DanceCo...
-✅ Update Row 106: Tiết mục mở màn không thể chấn động hơn!...
-✅ Update Row 109: Một nhóm nhạc gánh doanh thu của cả một ...
-✅ Update Row 110: Họ đích thị là những "tắc kè hoa" của Kp...
-✅ Update Row 112: Đó là lý do vì sao những special stage t...
-✅ Update Row 118: Âm nhạc là liều thuốc chữa lành, nhưng đ...
-✅ Update Row 119: Cách các nghệ sĩ nhà YG cháy hết mình tr...
-✅ Update Row 122: Teaser sang nhất K-POP ✨💅🏻
-
-#SNSD #Gir...
-✅ Update Row 127: Quay lại thời K-POP đang thực sự nở rộ…
-...
-✅ Update Row 129: Có ai còn nhớ tới cái tên 'Henry' không?...
-✅ Update Row 132: Có ai còn nhớ giai điệu này không? 🎵
-
-#...
-✅ Update Row 140: Bao giờ cho đến ngày xưa? 🎵
-
-#KPOPNOW #...
-✅ Update Row 141: Chiếc intro huyền thoại 🔥
-
-#SNSD #2PM 
-...
-✅ Update Row 142: Bạn có đồng tình với ý kiến này?
-
-#KARD ...
-✅ Update Row 145: Bạn còn nhớ ca khúc này không?
-
-#KPOPNOW...
-✅ Update Row 149: Đừng quên anh cũng là idol kì cựu đó nha...
-✅ Update Row 154: Fan K-POP chắc chắn không còn xa lạ với ...
-✅ Update Row 161: 📣 NHẮC BẠN: K-POP NOW đang tìm kiếm nhữ...
-✅ Update Row 162: ▶️ i-dle chính thức trở lại đường đua K-...
-✅ Update Row 164: Cùng quay trở lại thời hoàng kim của K-P...
-🆕 Insert: 🎁 MINIGAME 'SĂN SỐ MAY MẮN CÙNG K-POP N...
-🆕 Insert: 📣 IVE CHÍNH THỨC KHỞI ĐỘNG MÀN COMEBACK...
-🆕 Insert: ROSÉ XÁC NHẬN BIỂU DIỄN TẠI GRAMMY 2026 ...
-🆕 Insert: 🔥 HOẠT ĐỘNG ONLINE THÁNG 1-2 CỦA K-POP ...
-🆕 Insert: 🔥 Top lý do bạn NÊN đăng ký trở thành K...
-🆕 Insert: 🌟 11 THÀNH VIÊN WANNA ONE GỬI THƯ TAY Đ...
-🆕 Insert: 💣 DẤU HỎI LỚN: KIM SEON HO ÂM THẦM LẬP ...
-🆕 Insert: Dù càn quét mọi bảng xếp hạng và tạo nên...
-🆕 Insert: ⏰ COUNTDOWN – CHỈ CÒN 7 NGÀY! ⏰
-
-Cơ hội ...
-🆕 Insert: KIM SEON HO BỊ NGHI NHẬN THU NHẬP QUA PH...
-🆕 Insert: KIM SEON HO XIN LỖI, THỪA NHẬN THIẾU HIỂ...
-🆕 Insert: 📣 NHẮC NHẸ: Chỉ còn 3 ngày để đăng ký K...
-🆕 Insert: 🩷 BLACKPINK CÔNG BỐ TRACKLIST CHO MINI ...
-🆕 Insert: Lễ cưới của Bomi (Apink) và producer Rad...
-🆕 Insert: 🔥 KIIIKIII LẦN ĐẦU VƯƠN LÊN HẠNG #3 BXH...
-🆕 Insert: ZB1 Seok Matthew và Park Gunwook (ZEROBA...
-🆕 Insert: 🔥 CORTIS sẽ phát hành một album mới vào...
-🆕 Insert: HARUTO (HART – TOZ) “COME OUT” HỘ CẢ BOY...
-🆕 Insert: Mấy bà SONE ráng chờ thêm 1 năm nữa nha ...
-🆕 Insert: 💥 CHẤN ĐỘNG: SM PHONG TỎA TÀI SẢN CBX, ...
-🆕 Insert: ĐẸP NGƯỜI ĐẸP NẾT: JANG WONYOUNG (IVE) Â...
-🆕 Insert: 🎂✨ JESSICA MANG “REFLECTIONS” ĐẾN TPHCM...
-🆕 Insert: CẬP NHẬT TÌNH HÌNH CHART CỰC KHẢ QUAN CỦ...
-🆕 Insert: BREAKING NEWS: ZHANG HAO, RICKY, GYUVIN,...
-🆕 Insert: SONG MINO (WINNER) BỊ TRUY TỐ: VẮNG 102 ...
-🆕 Insert: LEE HANGYUL (BAE173/EX X1) SẼ RỜI POCKET...
-🆕 Insert: JUNGKOOK (BTS) CHÍNH THỨC TRỞ THÀNH ĐẠI ...
-🆕 Insert: ✨ MINI APP K-POP NOW chính thức mở vote ...
-🆕 Insert: 🎉 CÔNG BỐ KẾT QUẢ ONLINE EVENT tháng 1-...
-🆕 Insert: 🔥 Unit NCT JNJM (Jeno & Jaemin) gây sốt...
-🆕 Insert: 🎊 LUCKY DRAW CHÍNH THỨC ĐỔ BỘ K-POP NOW...
-🆕 Insert: Chúc mừng mấy ông bà ARMY nha 💜
-
-#BTS #...
-🆕 Insert: LISA TUNG BỘ ẢNH CHÁY HƠN FIFAI TRONG NG...
-🆕 Insert: 🚨 VOTE FOR ADVERTISEMENT TUẦN NÀY CHỈ C...
-🆕 Insert: ✨ HAPPY NEW YEAR 2026 ✨
-
-K-POP NOW xin g...
-🆕 Insert: RIIZE chính thức tung MV cho đĩa đơn tiế...
-🆕 Insert: ❓ GÓC THẮC MẮC: Trong số các idol sau, đ...
-🆕 Insert: 🔥 LÀ THIỆT KHÔNG GIỠN: Tôi đã được nhận...
-🆕 Insert: 🔥 6 CÔ NÀNG IVE CỰC CÁ TÍNH TRONG BỘ ẢN...
-🆕 Insert: 🔥 Idol Kpop hạng A có con 4 năm, chưa x...
-🆕 Insert: 🎡 LUCKY DRAW GÌ CHƯA CÁC NGƯỜI ĐẸP ƠI �...
-🆕 Insert: 💥 4 con tướng BLACKPINK cực chiến trong...
-🆕 Insert: 🥵 NCT JMJN bùng nổ visual trong bộ ảnh ...
-🆕 Insert: 🔥 EVERGLOW tung photo concept #1 cho 4t...
-🆕 Insert: 🎉 CHÚC MỪNG BLACKPINK chính thức đạt đư...
-🆕 Insert: 💥 CẬP NHẬT KẾT QUẢ BÌNH CHỌN ‘GIỌNG CA ...
-🆕 Insert: 🩷 HEARTS2HEARTS LẦN ĐẦU VÀO TOP 10 BXH ...
-🆕 Insert: 🔥 I.O.I ẤN ĐỊNH NGÀY TÁI HỢP SAU GẦN 1 ...
-🆕 Insert: 💥 NCT JNJM chính thức ra mắt với "BOTH ...
-🆕 Insert: 🔥 GIẢM SỨC MẠNH NHỮNG CON TƯỚNG NÀY LẠI...
-🆕 Insert: 🌸 KHAI XUÂN RỘN RÀNG – CÔNG BỐ KẾT QUẢ ...
-🆕 Insert: ⏳ WJSN SẼ CHÍNH THỨC TRỞ LẠI SAU 3 NĂM V...
-
-📝 Updating 324 cells...
-
-📝 Inserting 52 new rows...
-
-📊 Sorting by DATE OF PUBLICATION...
-✅ Sorted by DATE (newest first)
-
-🔢 Renumbering 228 rows (oldest=1, newest=228)...
-✅ Renumbered: Row 3 (newest) = 228, Row 230 (oldest) = 1
-✅ Facebook sheet updated!
-
-📌 Step 7/7: Syncing to Additional Tabs...
-
-🔄 Syncing metrics to 3 additional tabs...
-📊 Loaded 456 lookup entries (URLs + postIds) from Daily Update FB
-
-  📋 Syncing to "Promoting ZALO OA and MINI APP"...
-    📝 Tab has 3 rows
-    🔍 Sample URLs from tab: [
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid02DcfKvPuHCN5LYxRyadbRKWTu3QjiNpAFMQtf74sit4Ypz3VAUJ5MqL5JR4FhjDNnl",
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid0ytQoKymaHpiYsSndBtoVYP2AJB9xrifi2mFHERBcYfHSYUhvJ41Wg2DaoaiAL6TUl",
-  "https://www.facebook.com/reel/706632882385414"
-]
-  ✅ Updated 1 rows in "Promoting ZALO OA and MINI APP"
-
-  📋 Syncing to "JAN Online Event"...
-    📝 Tab has 5 rows
-    🔍 Sample URLs from tab: [
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid0239Lv9MpaXhsWNQyA9hpgzhJbmLDXCPAeXnNLsbAt9MXbKTSdhHo8xiLmSLPUASRVl",
-  "https://www.facebook.com/reel/884982820846285",
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid0Zdg7zBPW847GpWK1AWsAyqMYgSXEDVHcvHLCirZnswecScxto4kD2nCKp9F7DKDSl"
-]
-  ⚠️  No matches found in "JAN Online Event"
-
-  📋 Syncing to "Ambassador SS1"...
-    📝 Tab has 6 rows
-    🔍 Sample URLs from tab: [
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid02ZaqNZgsCZ5QZneTkfVpZPcpvcWRBZynw6arg2Rr6EKZjsamLN1KjRUX7ZrxgAMVNl",
-  "https://post.oa.zalo.me/d?id=dc42feec30a9d9f780b8&pageId=2551520430888728337",
-  "https://www.facebook.com/reel/723714640604987"
-]
-  ✅ Updated 1 rows in "Ambassador SS1"
-
-✅ Sync complete: 2/3 tabs, 2 total updates
-
+Retrying in 3s... (1 attempts left)
+Starting Export Data flow...
+Step 1: Looking for Export data button...
+[ERROR] 
 ═══════════════════════════════════════════
-   Summary
-═══════════════════════════════════════════
-📊 Parsed: 88 posts from CSV
-🆕 Inserted: 52 new posts
-✅ Updated: 36 posts
-🔄 Synced: 2 additional tabs (2 updates)
+[ERROR] ❌ ERROR
+[ERROR] ═══════════════════════════════════════════
+[ERROR] Message: elementHandle.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    57 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
 
-✅ Done!
-Browser closed
+[ERROR] 
+Stack: elementHandle.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - attempting click action[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and stable[22m
+[2m      - element is visible, enabled and stable[22m
+[2m      - scrolling into view if needed[22m
+[2m      - done scrolling[22m
+[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m    - retrying click action[22m
+[2m      - waiting 100ms[22m
+[2m    57 × waiting for element to be visible, enabled and stable[22m
+[2m       - element is visible, enabled and stable[22m
+[2m       - scrolling into view if needed[22m
+[2m       - done scrolling[22m
+[2m       - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
+[2m     - retrying click action[22m
+[2m       - waiting 500ms[22m
+
+    at FacebookCrawler.exportData (/Users/jc/Documents/TQCoding/KPopNow/kpop-content/src/facebook/crawler.js:75:29)
+    at async withRetry (/Users/jc/Documents/TQCoding/KPopNow/kpop-content/src/facebook/index.js:16:20)
+    at async main (/Users/jc/Documents/TQCoding/KPopNow/kpop-content/src/facebook/index.js:54:25)

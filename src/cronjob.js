@@ -40,7 +40,8 @@ async function runPipeline() {
     tiktok: false,
     facebook: false,
     sns: false,
-    zalo: false
+    zalo: false,
+    zaloAds: false
   };
 
   // Run tasks sequentially
@@ -48,6 +49,7 @@ async function runPipeline() {
   results.facebook = await runCommand('npm run fb', 'Facebook');
   results.sns = await runCommand('npm run sns:followers', 'SNS Followers');
   results.zalo = await runCommand('npm run zalo', 'Zalo');
+  results.zaloAds = await runCommand('npm run zalo:ads', 'Zalo Ads');
 
   const endTime = Date.now();
   const duration = ((endTime - startTime) / 1000).toFixed(2);
@@ -58,13 +60,14 @@ async function runPipeline() {
   log(`- Facebook: ${results.facebook ? '✓ Success' : '✗ Failed'}`);
   log(`- SNS Followers: ${results.sns ? '✓ Success' : '✗ Failed'}`);
   log(`- Zalo: ${results.zalo ? '✓ Success' : '✗ Failed'}`);
+  log(`- Zalo Ads: ${results.zaloAds ? '✓ Success' : '✗ Failed'}`);
   log(`Total duration: ${duration}s`);
   log('========================================');
 }
 
 // Schedule cronjob - runs at 9:00 AM every day
 // Cron format: second minute hour day month weekday
-cron.schedule('06 9 * * *', async () => {
+cron.schedule('53 12 * * *', async () => {
   log('Cron job triggered');
   await runPipeline();
 }, {
@@ -73,7 +76,7 @@ cron.schedule('06 9 * * *', async () => {
 
 log('Cronjob scheduler started');
 log('Schedule: Every day at 9:00 AM (Asia/Ho_Chi_Minh timezone)');
-log('Tasks: TikTok → Facebook → SNS Followers → Zalo');
+log('Tasks: TikTok → Facebook → SNS Followers → Zalo → Zalo Ads');
 
 // Keep the process running
 process.on('SIGINT', () => {

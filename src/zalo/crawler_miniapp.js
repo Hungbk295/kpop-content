@@ -154,8 +154,8 @@ class ZaloMiniAppCrawler {
             }
 
             // Parse new_follower and unfollower (skip total_follower at index 0)
-            const new_follower = parseInt(followerResponse.mainIndex[1].data.replace(/,/g, ''));
-            const unfollower = parseInt(followerResponse.mainIndex[2].data.replace(/,/g, ''));
+            const new_follower = parseMetricValue(followerResponse.mainIndex[1].data);
+            const unfollower = parseMetricValue(followerResponse.mainIndex[2].data);
 
             if (isNaN(new_follower) || isNaN(unfollower)) {
                 throw new Error(`Invalid numeric data in follower response: new=${followerResponse.mainIndex[1].data}, unfollower=${followerResponse.mainIndex[2].data}`);
@@ -193,8 +193,8 @@ class ZaloMiniAppCrawler {
             }
 
             // Parse and validate numeric values
-            const oa_visitor = profileResponse.mainIndex[0].data.replace(/,/g, '')
-            const oa_session = profileResponse.mainIndex[1].data.replace(/,/g, '');
+            const oa_visitor = parseMetricValue(profileResponse.mainIndex[0].data);
+            const oa_session = parseMetricValue(profileResponse.mainIndex[1].data);
 
             if (isNaN(oa_visitor) || isNaN(oa_session)) {
                 throw new Error(`Invalid numeric data in profile response: visitor=${profileResponse.mainIndex[0].data}, session=${profileResponse.mainIndex[1].data}`);

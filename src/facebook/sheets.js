@@ -387,6 +387,68 @@ class FacebookSheetsManager {
         return dateStr;
     }
 
+    /**
+     * Replace all sheet data from DATA_START_ROW onwards with the given posts.
+     * Clears existing data, writes all posts, sorts by date, renumbers, formats.
+     */
+    async replaceAllData(posts) {
+        const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
+        const now = new Date();
+        const dateStr = `Update ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+
+        // 1. Clear all data from DATA_START_ROW
+        await this.sheets.spreadsheets.values.clear({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            range: `${this.sheetConfig.SHEET_NAME}!A${DATA_START_ROW}:M1000`
+        });
+        console.log(`🗑️  Cleared sheet from row ${DATA_START_ROW}`);
+
+        if (posts.length === 0) {
+            console.log('⚠️  No posts to insert');
+            return { insertedCount: 0 };
+        }
+
+        // 2. Build rows array
+        const rows = posts.map(post => [
+            '',                                          // A: No (renumber later)
+            post.mainContent || post.title || '',        // B: Title
+            post.describe || '',                         // C: Describe
+            post._format || post.postType || '',         // D: Format
+            this.formatPublishDate(post.date),           // E: Date (YYYY-MM-DD)
+            post._status || 'Published',                 // F: Status
+            post.url || '',                              // G: Link to Post
+            parseMetricValue(post.views),                // H: View
+            parseMetricValue(post.impressions || post.reach || 0), // I: Reach
+            parseMetricValue(post.engagement),           // J: Like
+            parseMetricValue(post.comments),             // K: Comment
+            parseMetricValue(post.shares),               // L: Share
+            post._fromSnapshot ? (post._note || dateStr) : dateStr  // M: Note (always refresh for crawled posts)
+        ]);
+
+        // 3. Write all rows starting at DATA_START_ROW
+        await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            range: `${this.sheetConfig.SHEET_NAME}!A${DATA_START_ROW}`,
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: rows }
+        });
+        console.log(`📝 Wrote ${rows.length} rows to sheet`);
+
+        // 4. Sort by date (newest first)
+        console.log('\n📊 Sorting by DATE OF PUBLICATION...');
+        await this.sortByDate();
+
+        // 5. Renumber No. column
+        await this.renumberRows();
+
+        // 6. Format cells
+        await this.clearBoldFormatting(DATA_START_ROW, DATA_START_ROW + rows.length);
+        await this.formatNumberColumns(DATA_START_ROW, DATA_START_ROW + rows.length);
+
+        console.log('✅ Facebook sheet replaced!');
+        return { insertedCount: rows.length };
+    }
+
     // Save snapshot of current sheet data before any updates
     async saveSnapshot() {
         const startRow = this.sheetConfig.DATA_START_ROW;

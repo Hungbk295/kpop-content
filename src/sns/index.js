@@ -112,7 +112,7 @@ async function main() {
         // Step 7: Update sheet
         console.log('\n📌 Step 7/7: Updating Google Sheet...');
         await sheetsManager.cleanupJunkRows();
-        await sheetsManager.appendFollowerRow(today, fbFollowers, tiktokFollowers);
+        await sheetsManager.appendFollowerRow(today, fbFollowers, tiktokFollowers, tiktokLikes);
         await sheetsManager.formatNumberColumns();
 
         console.log('\n═══════════════════════════════════════════');

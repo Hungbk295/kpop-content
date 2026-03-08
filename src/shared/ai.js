@@ -38,12 +38,13 @@ async function callAI(prompt) {
             model,
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
-            stream: false
+            response_format: { type: 'json_object' }
         })
     });
 
     if (!response.ok) {
-        throw new Error(`AI API error: ${response.status} ${response.statusText}`);
+        const errBody = await response.text().catch(() => '');
+        throw new Error(`AI API error: ${response.status} ${response.statusText}${errBody ? ` — ${errBody}` : ''}`);
     }
 
     const data = await response.json();
@@ -143,6 +144,11 @@ async function processAllContent(metrics) {
             }
 
             console.log(`  ✅ Batch ${batchLabel} done`);
+
+            // Delay between batches (skip after last batch)
+            if (b < totalBatches - 1) {
+                await new Promise(r => setTimeout(r, 3000));
+            }
         } catch (error) {
             console.warn(`  ⚠️ Batch ${batchLabel} failed: ${error.message}`);
 
@@ -160,7 +166,7 @@ async function processAllContent(metrics) {
     // Step 3: Retry failed batches after delay
     if (failedBatches.length > 0) {
         console.log(`\n⏳ Retrying ${failedBatches.length} failed batch(es) after 5s delay...`);
-        await new Promise(r => setTimeout(r, 5000)); // 5 second delay
+        await new Promise(r => setTimeout(r, 7500)); // 7.5 second delay
 
         for (const { batchNum, chunk, batch } of failedBatches) {
             const batchLabel = `[Retry ${batchNum}/${totalBatches}]`;

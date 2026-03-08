@@ -38,7 +38,7 @@ async function main() {
 
     const crawler = new FacebookCrawler();
     let sheetsManager = null;
-    const totalSteps = 7; // Updated: includes sync to additional tabs
+    const totalSteps = 6; // crawl → parse → compare → replace sheet → save DB → sync tabs
 
     try {
         // Step 1: Initialize browser
@@ -74,41 +74,46 @@ async function main() {
         fs.writeFileSync(backupFile, JSON.stringify(metrics, null, 2));
         console.log(`💾 Backup saved to ${backupFile}`);
 
-        // Step 5: Compare with DB snapshot and selectively apply AI
+        // Step 5: Compare & merge with DB snapshot (source of truth)
         console.log(`\n📌 Step 5/${totalSteps}: Compare & merge with DB snapshot...`);
         let mergedData = metrics;
         if (config.FACEBOOK.SHEETS.SPREADSHEET_ID) {
             sheetsManager = new FacebookSheetsManager();
             await sheetsManager.init();
 
-            // Save current sheet state to DB
-            await sheetsManager.saveSnapshot();
-
-            // Read DB snapshot for comparison
+            // DB snapshot is source of truth — no sheet sync needed before crawl
             const db = new SnapshotDB();
             try {
                 const dbRows = db.getSnapshot('facebook');
-                mergedData = await compareAndMerge(dbRows, metrics, 'facebook');
+                const titleCacheMap = db.getTitleCacheMap();
+                console.log(`💾 DB snapshot: ${dbRows.length} entries, title cache: ${titleCacheMap.size} entries`);
+                mergedData = await compareAndMerge(dbRows, metrics, 'facebook', titleCacheMap);
             } finally {
                 db.close();
             }
         }
 
-        // Step 6: Update main Google Sheet
-        console.log(`\n📌 Step 6/${totalSteps}: Syncing with Google Sheets (Main Tab)...`);
+        // Step 6: Replace sheet + save DB snapshot + title cache
+        console.log(`\n📌 Step 6/${totalSteps}: Replacing Google Sheet and saving DB snapshot...`);
         if (sheetsManager) {
-            const result = await withRetry(
-                () => sheetsManager.updateMetrics(mergedData),
-                2,
-                2000
-            );
+            const result = await sheetsManager.replaceAllData(mergedData);
 
-            // Step 7: Sync metrics to additional tabs
-            console.log(`\n📌 Step 7/${totalSteps}: Syncing to Additional Tabs...`);
+            // Save merged posts to DB snapshot and title cache
+            const cacheDb = new SnapshotDB();
             try {
-                const syncResult = await sheetsManager.syncToAdditionalTabs();
-                result.syncedTabs = syncResult.syncedTabs;
-                result.syncUpdates = syncResult.totalUpdates;
+                const cacheSaved = cacheDb.saveBulkTitleCache(mergedData.filter(p => !p._fromSnapshot));
+                console.log(`💾 Title cache updated: ${cacheSaved} entries`);
+                const snapshotSaved = cacheDb.saveSnapshotFromPosts(mergedData);
+                console.log(`💾 DB snapshot updated: ${snapshotSaved} entries`);
+            } finally {
+                cacheDb.close();
+            }
+
+            // Sync metrics to additional tabs
+            console.log(`\n📌 Step 6b: Syncing to Additional Tabs...`);
+            let syncResult = { syncedTabs: 0, totalUpdates: 0 };
+            try {
+                syncResult = await sheetsManager.syncToAdditionalTabs();
             } catch (error) {
                 console.error('⚠️  Failed to sync to additional tabs:', error.message);
             }
@@ -116,12 +121,9 @@ async function main() {
             console.log('\n═══════════════════════════════════════════');
             console.log('   Summary');
             console.log('═══════════════════════════════════════════');
-            console.log(`📊 Parsed: ${metrics.length} posts from CSV`);
-            console.log(`🆕 Inserted: ${result.insertedCount} new posts`);
-            console.log(`✅ Updated: ${result.updatedCount} posts`);
-            if (result.syncedTabs !== undefined) {
-                console.log(`🔄 Synced: ${result.syncedTabs} additional tabs (${result.syncUpdates} updates)`);
-            }
+            console.log(`📊 Parsed from CSV: ${metrics.length} posts`);
+            console.log(`📋 Total in sheet: ${result.insertedCount} posts (incl. old from snapshot)`);
+            console.log(`🔄 Synced: ${syncResult.syncedTabs} additional tabs (${syncResult.totalUpdates} updates)`);
         } else {
             console.log('\n⚠️  Google Sheets not configured. Set FB_SPREADSHEET_ID in .env');
             console.log('Parsed data:');
@@ -180,34 +182,41 @@ async function importCSV(csvPath) {
             return;
         }
 
-        // Compare with DB snapshot and selectively apply AI
+        // Compare & merge with DB snapshot (source of truth)
         console.log('\n🔄 Compare & merge with DB snapshot...');
         const sheetsManager = new FacebookSheetsManager();
         await sheetsManager.init();
 
-        // Save current sheet state to DB
-        await sheetsManager.saveSnapshot();
-
-        // Read DB snapshot for comparison
         const db = new SnapshotDB();
         let mergedData;
         try {
             const dbRows = db.getSnapshot('facebook');
-            mergedData = await compareAndMerge(dbRows, metrics, 'facebook');
+            const titleCacheMap = db.getTitleCacheMap();
+            console.log(`💾 DB snapshot: ${dbRows.length} entries, title cache: ${titleCacheMap.size} entries`);
+            mergedData = await compareAndMerge(dbRows, metrics, 'facebook', titleCacheMap);
         } finally {
             db.close();
         }
 
-        // Update Google Sheets
-        console.log('\n📊 Syncing with Google Sheets (Main Tab)...');
-        const result = await sheetsManager.updateMetrics(mergedData);
+        // Replace sheet + save DB snapshot + title cache
+        console.log('\n📊 Replacing Google Sheet and saving DB snapshot...');
+        const result = await sheetsManager.replaceAllData(mergedData);
+
+        const cacheDb = new SnapshotDB();
+        try {
+            const cacheSaved = cacheDb.saveBulkTitleCache(mergedData.filter(p => !p._fromSnapshot));
+            console.log(`💾 Title cache updated: ${cacheSaved} entries`);
+            const snapshotSaved = cacheDb.saveSnapshotFromPosts(mergedData);
+            console.log(`💾 DB snapshot updated: ${snapshotSaved} entries`);
+        } finally {
+            cacheDb.close();
+        }
 
         // Sync metrics to additional tabs
         console.log('\n🔄 Syncing to Additional Tabs...');
+        let syncResult = { syncedTabs: 0, totalUpdates: 0 };
         try {
-            const syncResult = await sheetsManager.syncToAdditionalTabs();
-            result.syncedTabs = syncResult.syncedTabs;
-            result.syncUpdates = syncResult.totalUpdates;
+            syncResult = await sheetsManager.syncToAdditionalTabs();
         } catch (error) {
             console.error('⚠️  Failed to sync to additional tabs:', error.message);
         }
@@ -215,12 +224,9 @@ async function importCSV(csvPath) {
         console.log('\n═══════════════════════════════════════════');
         console.log('   Summary');
         console.log('═══════════════════════════════════════════');
-        console.log(`📊 Parsed: ${metrics.length} posts from CSV`);
-        console.log(`🆕 Inserted: ${result.insertedCount} new posts`);
-        console.log(`✅ Updated: ${result.updatedCount} posts`);
-        if (result.syncedTabs !== undefined) {
-            console.log(`🔄 Synced: ${result.syncedTabs} additional tabs (${result.syncUpdates} updates)`);
-        }
+        console.log(`📊 Parsed from CSV: ${metrics.length} posts`);
+        console.log(`📋 Total in sheet: ${result.insertedCount} posts (incl. old from snapshot)`);
+        console.log(`🔄 Synced: ${syncResult.syncedTabs} additional tabs (${syncResult.totalUpdates} updates)`);
 
         console.log('\n✅ Done!');
 

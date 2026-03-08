@@ -1,39 +1,54 @@
 /**
  * Compare crawled data with DB snapshot and merge intelligently.
  *
- * Posts with URL in snapshot → Skip AI, only update metrics (keep existing title + describe)
- * Posts with URL NOT in snapshot → Send to AI for title + describe generation
+ * Facebook: matches by title_raw via title_cache only (URL changes each crawl).
+ *   - Existing: restore manual fields from snapshot, update metrics
+ *   - New: run AI for title + describe
+ *   - Old (in snapshot but not in crawl): carry over as-is from snapshot
+ *
+ * TikTok: matches by URL (stable). Existing: skip AI. New: run AI.
  */
 
 const { extractVideoId, extractPostId } = require('./metrics');
 const { processAllContent } = require('./ai');
 
-/**
- * Extract the matching ID from a URL based on platform.
- * @param {string} url
- * @param {'tiktok'|'facebook'} platform
- * @returns {string|null}
- */
+function normalizeTitleKey(title) {
+    return String(title).toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
 function extractId(url, platform) {
     if (!url) return null;
     return platform === 'tiktok' ? extractVideoId(url) : extractPostId(url);
 }
 
-/**
- * Build a lookup map from DB rows: postId → dbRow
- * @param {Array<Object>} dbRows
- * @param {'tiktok'|'facebook'} platform
- * @returns {Map<string, Object>}
- */
 function buildDbMap(dbRows, platform) {
     const map = new Map();
     for (const row of dbRows) {
         const id = extractId(row.link_to_post, platform);
-        if (id) {
-            map.set(id, row);
-        }
+        if (id) map.set(id, row);
     }
     return map;
+}
+
+/** Convert a DB snapshot row back to a post object (for old posts not in crawl). */
+function convertSnapshotRowToPost(row) {
+    return {
+        title: row.title || '',       // AI title — used as mainContent (no raw title available)
+        mainContent: row.title || '',
+        describe: row.describe || '',
+        postType: row.format || '',
+        date: row.date || '',
+        url: row.link_to_post || '',
+        views: row.view || '0',
+        engagement: row.like || '0',
+        comments: row.comment || '0',
+        shares: row.share || '0',
+        _status: row.status || 'Published',
+        _note: row.note || '',
+        _format: row.format || '',
+        _isExisting: true,
+        _fromSnapshot: true           // Flag: skip title cache save for these
+    };
 }
 
 /**
@@ -42,66 +57,120 @@ function buildDbMap(dbRows, platform) {
  * @param {Array<Object>} dbRows - Rows from SnapshotDB (ordered by row_num)
  * @param {Array<Object>} crawledData - Freshly crawled posts
  * @param {'tiktok'|'facebook'} platform
+ * @param {Map|null} titleCacheMap - Facebook only: Map<normalizedTitleKey, {ai_title, ai_describe}>
  * @returns {Promise<Array<Object>>} Merged array ready for sheet sync
  */
-async function compareAndMerge(dbRows, crawledData, platform) {
+async function compareAndMerge(dbRows, crawledData, platform, titleCacheMap = null) {
     console.log(`\n🔄 Compare & Merge (${platform}): ${crawledData.length} crawled vs ${dbRows.length} in DB`);
 
-    const dbMap = buildDbMap(dbRows, platform);
+    // ─── FACEBOOK: title-raw matching only ───────────────────────────────────
+    if (platform === 'facebook') {
+        // Build lookup: ai_title → snapshot row (to restore manual fields)
+        const aiTitleToSnapshot = new Map();
+        for (const row of dbRows) {
+            if (row.title) aiTitleToSnapshot.set(row.title.trim(), row);
+        }
 
-    const needsAI = [];   // Posts that need AI title+describe generation
-    const hasTitle = [];   // Posts that already have title in DB (metrics-only update)
+        const hasTitle = [];
+        const needsAI = [];
+        const usedAiTitles = new Set();
+
+        for (const post of crawledData) {
+            const key = normalizeTitleKey(post.title);
+            const cacheEntry = titleCacheMap?.get(key);
+
+            if (cacheEntry) {
+                post.mainContent = cacheEntry.ai_title;
+                post.describe = cacheEntry.ai_describe;
+                post._isExisting = true;
+                usedAiTitles.add(cacheEntry.ai_title?.trim());
+
+                // Restore manual fields from snapshot
+                const snapRow = aiTitleToSnapshot.get(cacheEntry.ai_title?.trim());
+                post._status = snapRow?.status || 'Published';
+                post._note = snapRow?.note || '';
+                post._format = snapRow?.format || post.postType || '';
+
+                hasTitle.push(post);
+            } else {
+                post._isExisting = false;
+                needsAI.push(post);
+            }
+        }
+
+        console.log(`  📋 Existing (skip AI, metrics only): ${hasTitle.length}`);
+        console.log(`  🤖 New (run AI for title+describe): ${needsAI.length}`);
+
+        if (needsAI.length > 0) {
+            await processAllContent(needsAI);
+            for (const post of needsAI) {
+                post._status = 'Published';
+                post._note = '';
+                post._format = post._format || post.postType || '';
+            }
+        }
+
+        // Old posts from snapshot not matched by any crawled post
+        const oldPosts = [];
+        for (const row of dbRows) {
+            if (row.title && !usedAiTitles.has(row.title.trim())) {
+                oldPosts.push(convertSnapshotRowToPost(row));
+            }
+        }
+        if (oldPosts.length > 0) {
+            console.log(`  📦 Old posts from snapshot (not in crawl): ${oldPosts.length}`);
+        }
+
+        const allPosts = [...hasTitle, ...needsAI, ...oldPosts];
+        allPosts.sort((a, b) => parseDate(a.date, platform) - parseDate(b.date, platform));
+
+        const existingCount = allPosts.filter(p => p._isExisting).length;
+        const newCount = allPosts.filter(p => !p._isExisting).length;
+        console.log(`  ✅ Merged: ${existingCount} existing + ${newCount} new = ${allPosts.length} total`);
+        return allPosts;
+    }
+
+    // ─── TIKTOK: URL matching ────────────────────────────────────────────────
+    const dbMap = buildDbMap(dbRows, platform);
+    const needsAI = [];
+    const hasTitle = [];
 
     for (const post of crawledData) {
         const postId = extractId(post.url, platform);
         const dbRow = postId ? dbMap.get(postId) : null;
 
-        // Check if we can skip AI (Must exist AND have a description)
         if (dbRow && dbRow.describe && dbRow.describe.trim().length > 0) {
-            // URL exists + has describe → Skip AI, only update metrics
             post._dbRow = dbRow;
             post._isExisting = true;
             post.mainContent = dbRow.title || post.title;
-            post.describe = dbRow.describe;
+            post.describe = dbRow.describe || '';
             hasTitle.push(post);
         } else {
-            // New post OR existing post with empty describe → Run AI
-            post._dbRow = dbRow; // Persist DB info if exists (for sorting/merging)
+            post._dbRow = dbRow;
             post._isExisting = !!dbRow;
             needsAI.push(post);
         }
     }
 
-    console.log(`  📋 Existing URLs (skip AI, metrics only): ${hasTitle.length}`);
-    console.log(`  🤖 New URLs (use AI for title+describe): ${needsAI.length}`);
+    console.log(`  📋 Existing (skip AI, metrics only): ${hasTitle.length}`);
+    console.log(`  🤖 New (run AI for title+describe): ${needsAI.length}`);
 
-    // Process items that need AI
     if (needsAI.length > 0) {
         await processAllContent(needsAI);
     }
 
-    // Merge both groups
     const allPosts = [...hasTitle, ...needsAI];
-
-    // Sort: existing posts in DB row order, new posts at end sorted by date
     const existing = allPosts.filter(p => p._isExisting);
     const newPosts = allPosts.filter(p => !p._isExisting);
 
-    // Existing: sort by DB row_num
-    existing.sort((a, b) => (a._dbRow.row_num || 0) - (b._dbRow.row_num || 0));
-
-    // New: sort by date (oldest first to match current insert behavior)
+    existing.sort((a, b) => (a._dbRow?.row_num || 0) - (b._dbRow?.row_num || 0));
     if (newPosts.length > 0) {
         newPosts.sort((a, b) => parseDate(a.date, platform) - parseDate(b.date, platform));
     }
 
     const merged = [...existing, ...newPosts];
-
-    // Clean up internal properties (keep _isExisting for sheet update logic)
     for (const post of merged) {
         delete post._dbRow;
-        // IMPORTANT: Keep _isExisting flag so updateMetrics knows which are existing vs new
-        // delete post._isExisting;
     }
 
     console.log(`  ✅ Merged: ${existing.length} existing + ${newPosts.length} new = ${merged.length} total`);
@@ -128,12 +197,20 @@ function parseDate(dateStr, platform) {
     }
 
     if (platform === 'facebook') {
-        const match = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-        if (!match) return 0;
-        return new Date(
-            parseInt(match[3], 10), parseInt(match[1], 10) - 1, parseInt(match[2], 10),
-            parseInt(match[4], 10), parseInt(match[5], 10)
-        ).getTime();
+        // MM/DD/YYYY HH:MM (from CSV crawl)
+        let match = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+        if (match) {
+            return new Date(
+                parseInt(match[3], 10), parseInt(match[1], 10) - 1, parseInt(match[2], 10),
+                parseInt(match[4], 10), parseInt(match[5], 10)
+            ).getTime();
+        }
+        // YYYY-MM-DD (from DB snapshot)
+        match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            return new Date(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10)).getTime();
+        }
+        return 0;
     }
 
     return 0;
