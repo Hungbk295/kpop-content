@@ -7,7 +7,7 @@ class ZaloAdsSheetsManager {
     constructor() {
         this.sheets = null;
         this.auth = null;
-        this._sheetIdCache = {}; // Cache sheet IDs by tab name
+        this._sheetIdCache = {};
     }
 
     async init() {
@@ -61,7 +61,6 @@ class ZaloAdsSheetsManager {
         );
 
         if (!sheet) {
-            // Auto-create the tab if it doesn't exist
             console.log(`📝 Tab "${tabName}" not found, creating...`);
             const addSheetRes = await this.sheets.spreadsheets.batchUpdate({
                 spreadsheetId: this.spreadsheetId,
@@ -81,98 +80,435 @@ class ZaloAdsSheetsManager {
         return this._sheetIdCache[tabName];
     }
 
-    async insertRowAt(tabName, rowIndex) {
-        const sheetId = await this.getSheetId(tabName);
+    /**
+     * Parse a CSV file into a 2D array of values.
+     */
+    parseCsv(csvPath) {
+        const content = fs.readFileSync(csvPath, 'utf8');
+        const rows = [];
+        let currentRow = [];
+        let currentField = '';
+        let inQuotes = false;
 
-        await this.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: this.spreadsheetId,
-            resource: {
-                requests: [{
-                    insertDimension: {
-                        range: {
-                            sheetId: sheetId,
-                            dimension: 'ROWS',
-                            startIndex: rowIndex - 1,
-                            endIndex: rowIndex
-                        },
-                        inheritFromBefore: false
+        for (let i = 0; i < content.length; i++) {
+            const ch = content[i];
+
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (i + 1 < content.length && content[i + 1] === '"') {
+                        currentField += '"';
+                        i++; // skip escaped quote
+                    } else {
+                        inQuotes = false;
                     }
-                }]
+                } else {
+                    currentField += ch;
+                }
+            } else {
+                if (ch === '"') {
+                    inQuotes = true;
+                } else if (ch === ',') {
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if (ch === '\n') {
+                    currentRow.push(currentField);
+                    currentField = '';
+                    if (currentRow.length > 0) rows.push(currentRow);
+                    currentRow = [];
+                } else if (ch === '\r') {
+                    // skip
+                } else {
+                    currentField += ch;
+                }
             }
-        });
+        }
 
-        console.log(`✅ Inserted blank row at row ${rowIndex} in tab "${tabName}"`);
+        // Last field/row
+        if (currentField || currentRow.length > 0) {
+            currentRow.push(currentField);
+            rows.push(currentRow);
+        }
+
+        return rows;
     }
 
-    async syncAdData(adId, adResult) {
-        const { name, sheetTab, data } = adResult;
-
-        if (!data) {
-            console.log(`⚠️  Skipping sync for ${name} (no data)`);
-            return;
-        }
-
-        console.log(`\n📊 Syncing ads data for "${name}" to tab "${sheetTab}"...`);
-
-        const DATA_START_ROW = config.ZALO_ADS.SHEETS.DATA_START_ROW;
+    /**
+     * Sync a CSV file to a Google Sheet tab for a specific campaign.
+     *
+     * Format: 5 rows per date block (one per metric).
+     * Cols A-D = ad group values (Set A/B/C/D), Col I = Korean label, Col J = date.
+     *
+     * Metrics:
+     *   Lượt hiển thị  → 노출수
+     *   Lượt nhấn      → 클릭수
+     *   CTR             → CTR
+     *   Giá TB mỗi lượt nhấn → CPC
+     *   Chi phí         → 광고비
+     */
+    async syncAdsData(csvPath, campaignId) {
+        const tabName = String(campaignId);
+        console.log(`\n📊 Syncing CSV to tab "${tabName}"...`);
 
         // Ensure tab exists
-        await this.getSheetId(sheetTab);
+        await this.getSheetId(tabName);
 
-        // Insert a new row at the data start position
-        await this.insertRowAt(sheetTab, DATA_START_ROW);
-
-        // TODO: Update with actual column layout once data fields are confirmed
-        // Format date
-        const today = new Date();
-        const dateStr = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`;
-
-        // Placeholder row data - will be updated when data fields are confirmed
-        const rowData = [
-            dateStr,        // A: Date
-            // ... more columns will be added based on actual data fields
-        ];
-
-        // Add all data values dynamically
-        const dataKeys = Object.keys(data);
-        for (const key of dataKeys) {
-            rowData.push(data[key]);
+        // Parse CSV
+        const csvRows = this.parseCsv(csvPath);
+        if (csvRows.length < 2) {
+            console.log(`   ⚠️  CSV has no data rows, skipping sync`);
+            return { insertedCount: 0 };
         }
 
-        const endCol = String.fromCharCode(65 + rowData.length - 1); // A=65
+        const headers = csvRows[0];
+        const dataRows = csvRows.slice(1);
 
+        // Find column indices by header name
+        const col = (name) => headers.indexOf(name);
+        const colIdx = {
+            id: col('ID'),
+            adName: col('Tên quảng cáo'),
+            breakdown: col('Số liệu chia nhỏ'),
+            impressions: col('Lượt hiển thị'),
+            clicks: col('Lượt nhấn'),
+            ctr: col('CTR'),
+            cpc: col('Giá trung bình mỗi lượt nhấn'),
+            cost: col('Chi phí'),
+        };
+
+        // Filter: "Số liệu chia nhỏ" = "Tổng", skip summary row (ID = "Tổng")
+        const totalRows = dataRows.filter(row =>
+            row[colIdx.breakdown] === 'Tổng' && row[colIdx.id] !== 'Tổng'
+        );
+
+        if (totalRows.length === 0) {
+            console.log(`   ⚠️  No "Tổng" rows found, skipping sync`);
+            return { insertedCount: 0 };
+        }
+
+        // Detect Set letter from ad name: "[New Test/Set B] ..." → "B"
+        const groups = {};
+        for (const row of totalRows) {
+            const adName = row[colIdx.adName];
+            const match = adName.match(/Set\s+([A-Z])/i);
+            if (match) {
+                groups[match[1].toUpperCase()] = row;
+            }
+        }
+
+        const sortedLetters = Object.keys(groups).sort();
+        console.log(`   📍 Detected groups: ${sortedLetters.join(', ')}`);
+
+        // Detect date from non-total rows (DD/MM/YYYY → M/D/YYYY)
+        let dateStr;
+        const nonTotalRow = dataRows.find(row =>
+            row[colIdx.breakdown] !== 'Tổng' && row[colIdx.id] !== 'Tổng'
+        );
+        if (nonTotalRow) {
+            const parts = nonTotalRow[colIdx.breakdown].split('/');
+            if (parts.length === 3) {
+                dateStr = `${parseInt(parts[1])}/${parseInt(parts[0])}/${parts[2]}`;
+            }
+        }
+        if (!dateStr) {
+            const now = new Date();
+            dateStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
+        }
+        console.log(`   📅 Date: ${dateStr}`);
+
+        // Strip commas from numeric string
+        const num = (val) => val ? val.replace(/,/g, '') : '';
+
+        // Metrics mapping: CSV column index → Korean label
+        const metrics = [
+            { idx: colIdx.impressions, label: '노출수', numeric: true },
+            { idx: colIdx.clicks,      label: '클릭수', numeric: true },
+            { idx: colIdx.ctr,         label: 'CTR',   numeric: false },
+            { idx: colIdx.cpc,         label: 'CPC',   numeric: true },
+            { idx: colIdx.cost,        label: '광고비', numeric: true },
+        ];
+
+        // Build 5 rows: cols A-D = group values, col I = label, col J = date
+        const sheetRows = metrics.map(metric => {
+            const row = new Array(10).fill('');
+            sortedLetters.forEach((letter, i) => {
+                if (i < 4) {
+                    const val = groups[letter][metric.idx];
+                    row[i] = metric.numeric ? num(val) : val;
+                }
+            });
+            row[8] = metric.label; // Col I
+            row[9] = dateStr;      // Col J
+            return row;
+        });
+
+        // Find next empty row (check col I)
+        let nextRow = 1;
+        try {
+            const res = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.spreadsheetId,
+                range: `'${tabName}'!I:I`
+            });
+            if (res.data.values) {
+                nextRow = res.data.values.length + 1;
+            }
+        } catch (e) {
+            // Tab might be empty
+        }
+
+        // Write 5 rows
+        const endRow = nextRow + sheetRows.length - 1;
         await this.sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: this.spreadsheetId,
             resource: {
                 valueInputOption: 'USER_ENTERED',
                 data: [{
-                    range: `'${sheetTab}'!A${DATA_START_ROW}:${endCol}${DATA_START_ROW}`,
-                    values: [rowData]
+                    range: `'${tabName}'!A${nextRow}:J${endRow}`,
+                    values: sheetRows
                 }]
             }
         });
 
-        console.log(`✅ Synced ${name} data to tab "${sheetTab}" at row ${DATA_START_ROW}`);
+        console.log(`   ✅ Synced ${sheetRows.length} metric rows to tab "${tabName}" (rows ${nextRow}-${endRow})`);
+        return { insertedCount: sheetRows.length };
     }
+    /**
+     * Sync directly from API JSON report data.
+     *
+     * API metric IDs: 11=Impressions, 16=Clicks, 100001=Cost.
+     * CTR = clicks/impressions*100, CPC = cost/clicks (calculated).
+     *
+     * @param {object} reportData - { campaignReport, uniqueUser }
+     * @param {string} campaignId
+     * @param {string} dateStr - YYYY-MM-DD format
+     * @param {string[]} [adsIds] - Filter by these ads IDs (from config)
+     */
+    async syncFromReport(reportData, campaignId, dateStr, adsIds) {
+        const tabName = String(campaignId);
+        console.log(`\n📊 Syncing report to tab "${tabName}"...`);
 
-    async syncAllAds(results) {
-        console.log('\n📊 Starting Zalo Ads sheets sync...');
+        await this.getSheetId(tabName);
 
-        let successCount = 0;
-        let failCount = 0;
-
-        for (const [adId, adResult] of Object.entries(results)) {
-            try {
-                await this.syncAdData(adId, adResult);
-                successCount++;
-            } catch (error) {
-                console.error(`❌ Failed to sync ${adResult.name}: ${error.message}`);
-                failCount++;
-            }
+        const ads = reportData.campaignReport?.data;
+        if (!ads || ads.length === 0) {
+            console.log(`   ⚠️  No ads data in report, skipping sync`);
+            return { insertedCount: 0 };
         }
 
-        console.log(`\n✅ Sync complete: ${successCount} success, ${failCount} failed`);
-        return { successCount, failCount };
+        // Filter by configured ads IDs
+        const filteredAds = adsIds
+            ? ads.filter(ad => adsIds.includes(String(ad.id)))
+            : ads;
+
+        // Detect Set letter from ad name and extract metrics
+        const groups = {};
+        for (const ad of filteredAds) {
+            const match = ad.name.match(/Set\s+([A-Z])/i);
+            if (!match) continue;
+
+            const letter = match[1].toUpperCase();
+            const total = ad.reportTotal || {};
+            const impressions = total['11'] || 0;
+            const clicks = total['16'] || 0;
+            const cost = total['100001'] || 0;
+            const ctr = impressions > 0 ? (clicks / impressions * 100).toFixed(2) : '0';
+            const cpc = clicks > 0 ? Math.round(cost / clicks) : 0;
+
+            groups[letter] = { impressions, clicks, ctr, cpc, cost };
+        }
+
+        const sortedLetters = Object.keys(groups).sort();
+        console.log(`   📍 Detected groups: ${sortedLetters.join(', ')}`);
+
+        if (sortedLetters.length === 0) {
+            console.log(`   ⚠️  No Set groups detected, skipping sync`);
+            return { insertedCount: 0 };
+        }
+
+        // Convert YYYY-MM-DD → M/D/YYYY
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const displayDate = `${m}/${d}/${y}`;
+        console.log(`   📅 Date: ${displayDate}`);
+
+        const metrics = [
+            { key: 'impressions', label: '노출수' },
+            { key: 'clicks',      label: '클릭수' },
+            { key: 'ctr',         label: 'CTR' },
+            { key: 'cpc',         label: 'CPC' },
+            { key: 'cost',        label: '광고비' },
+        ];
+
+        // Build 5 rows: cols A-D = group values, col I = label, col J = date
+        const sheetRows = metrics.map(metric => {
+            const row = new Array(10).fill('');
+            sortedLetters.forEach((letter, i) => {
+                if (i < 4) {
+                    row[i] = groups[letter][metric.key];
+                }
+            });
+            row[8] = metric.label;
+            row[9] = displayDate;
+            return row;
+        });
+
+        // Find next empty row (check col I)
+        let nextRow = 1;
+        try {
+            const res = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.spreadsheetId,
+                range: `'${tabName}'!I:I`
+            });
+            if (res.data.values) {
+                nextRow = res.data.values.length + 1;
+            }
+        } catch (e) {}
+
+        const endRow = nextRow + sheetRows.length - 1;
+        await this.sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            resource: {
+                valueInputOption: 'USER_ENTERED',
+                data: [{
+                    range: `'${tabName}'!A${nextRow}:J${endRow}`,
+                    values: sheetRows
+                }]
+            }
+        });
+
+        console.log(`   ✅ Synced ${sheetRows.length} metric rows to tab "${tabName}" (rows ${nextRow}-${endRow})`);
+        return { insertedCount: sheetRows.length };
+    }
+
+    /**
+     * Setup the Config sheet with labels, dropdown lists, and data validation.
+     * Config sheet structure:
+     *   A1:A3 = Labels, B1:B3 = Dropdown values, C1:C3 = Notes
+     *   E1:G1 = List headers, E2+:G2+ = Dropdown source lists
+     */
+    async setupConfigSheet() {
+        const configTab = 'Config';
+        console.log(`\n⚙️  Setting up Config sheet...`);
+
+        const sheetId = await this.getSheetId(configTab);
+
+        // Campaign IDs from config
+        const campaignIds = Object.keys(config.ZALO_ADS.CAMPAIGNS);
+
+        // Metric labels (same order as syncAdsData/syncFromReport)
+        const metrics = ['노출수', '클릭수', 'CTR', 'CPC', '광고비'];
+
+        // Scan first campaign tab to find rows with dates in col J
+        let availableRows = [];
+        try {
+            const firstCampaign = campaignIds[0];
+            const res = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.spreadsheetId,
+                range: `'${firstCampaign}'!J:J`
+            });
+            if (res.data.values) {
+                const seen = new Set();
+                for (let i = 0; i < res.data.values.length; i++) {
+                    const val = res.data.values[i][0];
+                    if (val && !seen.has(val)) {
+                        seen.add(val);
+                        availableRows.push(i + 1); // 1-indexed, first row of each date block
+                    }
+                }
+            }
+        } catch (e) {
+            console.log('   ⚠️  Could not scan campaign tab for rows, leaving empty');
+        }
+
+        // Build data to write
+        const batchData = [];
+
+        // A1:C3 - Labels and notes
+        batchData.push({
+            range: `'${configTab}'!A1:C3`,
+            values: [
+                ['Sheet ID', '', 'ID của sheet nguồn'],
+                ['Row tham chiếu', '', 'Số dòng chứa ngày cần so'],
+                ['Metric', '', 'Chỉ số cần lấy']
+            ]
+        });
+
+        // E1:G1 - List headers
+        batchData.push({
+            range: `'${configTab}'!E1:G1`,
+            values: [['Sheet IDs', 'Rows', 'Metrics']]
+        });
+
+        // E2+:G2+ - Dropdown source lists
+        const maxLen = Math.max(campaignIds.length, availableRows.length, metrics.length);
+        if (maxLen > 0) {
+            const listRows = [];
+            for (let i = 0; i < maxLen; i++) {
+                listRows.push([
+                    campaignIds[i] || '',
+                    availableRows[i] !== undefined ? availableRows[i] : '',
+                    metrics[i] || ''
+                ]);
+            }
+            batchData.push({
+                range: `'${configTab}'!E2:G${1 + listRows.length}`,
+                values: listRows
+            });
+        }
+
+        // B1:B3 - Default selected values
+        batchData.push({
+            range: `'${configTab}'!B1:B3`,
+            values: [
+                [campaignIds[0] || ''],
+                [availableRows[0] !== undefined ? availableRows[0] : ''],
+                [metrics[0] || '']
+            ]
+        });
+
+        // Write all data
+        await this.sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            resource: {
+                valueInputOption: 'USER_ENTERED',
+                data: batchData
+            }
+        });
+
+        // Set up data validation (dropdowns) for B1, B2, B3
+        const dropdowns = [
+            { row: 0, sourceCol: '$E$2:$E' },  // B1 → Sheet IDs
+            { row: 1, sourceCol: '$F$2:$F' },  // B2 → Rows
+            { row: 2, sourceCol: '$G$2:$G' },  // B3 → Metrics
+        ];
+
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            resource: {
+                requests: dropdowns.map(dd => ({
+                    setDataValidation: {
+                        range: {
+                            sheetId,
+                            startRowIndex: dd.row,
+                            endRowIndex: dd.row + 1,
+                            startColumnIndex: 1, // col B
+                            endColumnIndex: 2
+                        },
+                        rule: {
+                            condition: {
+                                type: 'ONE_OF_RANGE',
+                                values: [{ userEnteredValue: `='${configTab}'!${dd.sourceCol}` }]
+                            },
+                            showCustomUi: true,
+                            strict: false
+                        }
+                    }
+                }))
+            }
+        });
+
+        console.log(`✅ Config sheet setup complete!`);
+        console.log(`   📋 Sheet IDs: ${campaignIds.join(', ')}`);
+        console.log(`   📊 Metrics: ${metrics.join(', ')}`);
+        console.log(`   📍 Available rows: ${availableRows.length}`);
     }
 }
 

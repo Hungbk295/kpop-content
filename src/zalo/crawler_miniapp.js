@@ -2,6 +2,7 @@ const { chromium } = require('playwright');
 const config = require('../config');
 const path = require('path');
 const { parseMetricValue } = require('../shared/metrics');
+const { sleep } = require('../utils/app');
 
 class ZaloMiniAppCrawler {
     constructor() {
@@ -12,8 +13,7 @@ class ZaloMiniAppCrawler {
     async init() {
         console.log('🔐 Initializing Zalo MiniApp crawler...');
 
-        // Reuse TikTok browser profile (user already logged in to Zalo here)
-        const userDataDir = path.resolve(config.USER_DATA_DIR);
+        const userDataDir = path.resolve(config.ZALO.USER_DATA_DIR);
 
         console.log('📁 User data dir:', userDataDir);
 
@@ -27,13 +27,18 @@ class ZaloMiniAppCrawler {
             ]
         });
 
-        console.log('✅ Browser ready (reusing TikTok profile)!');
+        const existingPages = this.context.pages();
+        for (const page of existingPages) {
+            await page.close();
+        }
+
+        this.page = await this.context.newPage();
+
+        console.log('✅ Browser ready with dedicated Zalo persistent profile!');
     }
 
     async navigateToMiniApp() {
         console.log('📍 Navigating to Zalo MiniApp statistics...');
-
-        this.page = this.context.pages()[0] || await this.context.newPage();
 
         const url = config.ZALO.MINIAPP_URL;
 
@@ -51,6 +56,7 @@ class ZaloMiniAppCrawler {
             waitUntil: 'networkidle',
             timeout: 30000
         });
+        await sleep(30000);
         await this.page.waitForTimeout(3000);
 
         console.log('✅ Zalo MiniApp statistics page loaded');
@@ -61,6 +67,7 @@ class ZaloMiniAppCrawler {
 
         try {
             await this.navigateToMiniApp();
+            await sleep(30000);
 
             const metrics = await this.page.evaluate(() => {
                 const xpath = "//p[contains(@class,'OverviewPage')]";
@@ -114,7 +121,7 @@ class ZaloMiniAppCrawler {
             // Step 2: Click strong element (establish proper context for API calls)
             console.log('📍 Step 2: Clicking strong element...');
             await this.page.click('//*[@id="DataTables_Table_0"]/tbody/tr/td[3]/a/strong');
-            await this.page.waitForTimeout(3000);
+            await this.page.waitForTimeout(15000);
 
             // Get yesterday's date for API call (current date - 1 day)
             const now = new Date();

@@ -49,7 +49,7 @@ async function runPipeline() {
   results.facebook = await runCommand('npm run fb', 'Facebook');
   results.sns = await runCommand('npm run sns:followers', 'SNS Followers');
   results.zalo = await runCommand('npm run zalo', 'Zalo');
-  results.zaloAds = await runCommand('npm run zalo:ads', 'Zalo Ads');
+  // results.zaloAds = await runCommand('npm run zalo:ads', 'Zalo Ads');
 
   const endTime = Date.now();
   const duration = ((endTime - startTime) / 1000).toFixed(2);
@@ -67,7 +67,7 @@ async function runPipeline() {
 
 // Schedule cronjob - runs at 9:00 AM every day
 // Cron format: second minute hour day month weekday
-cron.schedule('53 12 * * *', async () => {
+cron.schedule('44 8 * * *', async () => {
   log('Cron job triggered');
   await runPipeline();
 }, {

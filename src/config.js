@@ -130,8 +130,8 @@ module.exports = {
 
         // Campaigns with their active ads IDs
         CAMPAIGNS: {
-            '6640483': ['19811100', '19811097', '19809785'],
-            '6638128': ['19797973', '19797972', '19797971']
+            '6658001': ['19829771', '19829765', '19829748'],
+            '6652890': ['19821523', '19821522', '19821496']
         },
 
         SHEETS: {
@@ -140,10 +140,10 @@ module.exports = {
         }
     },
 
-    // Zalo config (reuses TikTok browser profile)
+    // Zalo config
     ZALO: {
-        // Reuse TikTok browser profile (user already logged in to Zalo there)
-        USER_DATA_DIR: process.env.USER_DATA_DIR || './browser-data',
+        // Dedicated persistent profile for the Zalo flow
+        USER_DATA_DIR: process.env.ZALO_USER_DATA_DIR || './browser-data-zalo',
 
         // Zalo MiniApp URL
         MINIAPP_URL: process.env.ZALO_MINIAPP_URL || 'https://miniapp.zaloplatforms.com/miniapp/1774671493144848971/statistic/overview',
@@ -174,7 +174,7 @@ module.exports = {
                     AVG_DURATION: 'G',
                     NOTE: 'H'
                 },
-                DATA_START_ROW: parseInt(process.env.ZALO_MINIAPP_DATA_START_ROW, 10) || 10
+                DATA_START_ROW: parseInt(process.env.ZALO_MINIAPP_DATA_START_ROW, 10) || 9
             }
         }
     }

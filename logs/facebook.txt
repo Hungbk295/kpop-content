@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════
   FACEBOOK - Log Session
-  2026-03-08T05:55:28.676Z
+  2026-03-21T01:45:24.659Z
 ═══════════════════════════════════════════
 
 📝 Logging to: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/logs/facebook.txt
@@ -21,89 +21,147 @@ Facebook Content Library loaded!
 📌 Step 3/6: Using Export Data flow...
 Starting Export Data flow...
 Step 1: Looking for Export data button...
-Attempt 1 failed: elementHandle.click: Timeout 30000ms exceeded.
-Call log:
-[2m  - attempting click action[22m
-[2m    2 × waiting for element to be visible, enabled and stable[22m
-[2m      - element is visible, enabled and stable[22m
-[2m      - scrolling into view if needed[22m
-[2m      - done scrolling[22m
-[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m    - retrying click action[22m
-[2m    - waiting 20ms[22m
-[2m    2 × waiting for element to be visible, enabled and stable[22m
-[2m      - element is visible, enabled and stable[22m
-[2m      - scrolling into view if needed[22m
-[2m      - done scrolling[22m
-[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m    - retrying click action[22m
-[2m      - waiting 100ms[22m
-[2m    57 × waiting for element to be visible, enabled and stable[22m
-[2m       - element is visible, enabled and stable[22m
-[2m       - scrolling into view if needed[22m
-[2m       - done scrolling[22m
-[2m       - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m     - retrying click action[22m
-[2m       - waiting 500ms[22m
+Clicked Export data button
+Step 2: Looking for Create new data report...
+Clicked Create new data report
+Step 3: Clicking Select date range...
+Clicked Select date range
+Step 3b: Selecting "This year"...
+Selected "This year: Jan 1 - Mar 21"
+Step 4: Looking for "Create report (.csv)" button...
+Clicked "Create report (.csv)"
+Step 5: Waiting 5s before navigating to Report History...
+Step 6: Navigating to Report History...
+Step 7: Waiting for first report to have download link...
+   Report still generating... (0s)
+   Report still generating... (2s)
+   Report still generating... (4s)
+   Report still generating... (6s)
+   Report still generating... (8s)
+   Report still generating... (10s)
+   Report still generating... (12s)
+   Report still generating... (14s)
+   Report still generating... (16s)
+   Report still generating... (18s)
+   Report still generating... (20s)
+   Refreshing page...
+Download link found!
+Step 8: Downloading CSV...
+   Download URL: https://l.facebook.com/l.php?u=https%3A%2F%2Fscontent-hkg1-1.xx.fbcdn.net%2Fm1%2Fv%2Ft6%2FAn-HZ3fJMk...
+Waiting for download to start...
+Downloaded: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/Feb-21-2026_Mar-21-2026_Content_Publish time_Summary_1593403358549684.csv
 
-Retrying in 3s... (1 attempts left)
-Starting Export Data flow...
-Step 1: Looking for Export data button...
-[ERROR] 
+📌 Step 4/6: Parsing CSV: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/Feb-21-2026_Mar-21-2026_Content_Publish time_Summary_1593403358549684.csv
+CSV Headers: [
+  "Post ID",
+  "Page ID",
+  "Page name",
+  "Title",
+  "Duration (sec)",
+  "Publish time",
+  "Permalink",
+  "Post type",
+  "Data comment",
+  "Date",
+  "Comments",
+  "Distribution",
+  "Impressions",
+  "Interactions",
+  "Net follows",
+  "Reactions",
+  "Saves",
+  "Shares",
+  "Viewers",
+  "Views",
+  "Average Seconds viewed",
+  "Seconds viewed"
+]
+Column mapping: {
+  "title": 3,
+  "date": 5,
+  "type": 7,
+  "views": 19,
+  "reach": 12,
+  "engagement": 15,
+  "comments": 10,
+  "shares": 17,
+  "url": 6
+}
+Parsed 168 posts from CSV
+💾 Backup saved to /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/facebook_metrics_2026-03-21.json
+
+📌 Step 5/6: Compare & merge with DB snapshot...
+🔐 Initializing Google Sheets API for Facebook...
+✅ Google Sheets API ready!
+💾 DB snapshot: 240 entries, title cache: 238 entries
+
+🔄 Compare & Merge (facebook): 168 crawled vs 240 in DB
+  📋 Existing (skip AI, metrics only): 164
+  🤖 New (run AI for title+describe): 4
+🤖 Processing 4 items...
+🤖 Calling AI: 4 items in 1 batch(es)...
+  1. [AI] RM (BTS) Faces Injury Before Gwanghwamun Concert �
+  2. [AI] BTS Releases Hot MV 'SWIM': A Visual Feast 🌊
+  3. [AI] BTS's 'SWIM' Officially Released: Vote for Them No
+  4. [AI] Seoul Turns Red for BTS: Art or Visual Nightmare? 
+  ✅ Batch [1/1] done
+✅ Content processing complete!
+  📦 Old posts from snapshot (not in crawl): 76
+  ✅ Merged: 240 existing + 4 new = 244 total
+
+📌 Step 6/6: Replacing Google Sheet and saving DB snapshot...
+🗑️  Cleared sheet from row 3
+📝 Wrote 244 rows to sheet
+
+📊 Sorting by DATE OF PUBLICATION...
+✅ Sorted by DATE (newest first)
+
+🔢 Renumbering 244 rows (oldest=1, newest=244)...
+✅ Renumbered: Row 3 (newest) = 244, Row 246 (oldest) = 1
+✅ Facebook sheet replaced!
+💾 Title cache updated: 168 entries
+💾 DB snapshot updated: 244 entries
+
+📌 Step 6b: Syncing to Additional Tabs...
+
+🔄 Syncing metrics to 3 additional tabs...
+📊 Loaded 488 lookup entries (URLs + postIds) from Daily Update FB
+
+  📋 Syncing to "Promoting ZALO OA and MINI APP"...
+    📝 Tab has 3 rows
+    🔍 Sample URLs from tab: [
+  "https://www.facebook.com/kpopnow.vn/posts/pfbid02DcfKvPuHCN5LYxRyadbRKWTu3QjiNpAFMQtf74sit4Ypz3VAUJ5MqL5JR4FhjDNnl",
+  "https://www.facebook.com/kpopnow.vn/posts/pfbid0ytQoKymaHpiYsSndBtoVYP2AJB9xrifi2mFHERBcYfHSYUhvJ41Wg2DaoaiAL6TUl",
+  "https://www.facebook.com/reel/706632882385414"
+]
+  ⚠️  No matches found in "Promoting ZALO OA and MINI APP"
+
+  📋 Syncing to "JAN Online Event"...
+    📝 Tab has 5 rows
+    🔍 Sample URLs from tab: [
+  "https://www.facebook.com/kpopnow.vn/posts/pfbid0239Lv9MpaXhsWNQyA9hpgzhJbmLDXCPAeXnNLsbAt9MXbKTSdhHo8xiLmSLPUASRVl",
+  "https://www.facebook.com/reel/884982820846285",
+  "https://www.facebook.com/kpopnow.vn/posts/pfbid0Zdg7zBPW847GpWK1AWsAyqMYgSXEDVHcvHLCirZnswecScxto4kD2nCKp9F7DKDSl"
+]
+  ⚠️  No matches found in "JAN Online Event"
+
+  📋 Syncing to "Ambassador SS1"...
+    📝 Tab has 6 rows
+    🔍 Sample URLs from tab: [
+  "https://www.facebook.com/kpopnow.vn/posts/pfbid02ZaqNZgsCZ5QZneTkfVpZPcpvcWRBZynw6arg2Rr6EKZjsamLN1KjRUX7ZrxgAMVNl",
+  "https://post.oa.zalo.me/d?id=dc42feec30a9d9f780b8&pageId=2551520430888728337",
+  "https://www.facebook.com/reel/723714640604987"
+]
+  ⚠️  No matches found in "Ambassador SS1"
+
+✅ Sync complete: 0/3 tabs, 0 total updates
+
 ═══════════════════════════════════════════
-[ERROR] ❌ ERROR
-[ERROR] ═══════════════════════════════════════════
-[ERROR] Message: elementHandle.click: Timeout 30000ms exceeded.
-Call log:
-[2m  - attempting click action[22m
-[2m    2 × waiting for element to be visible, enabled and stable[22m
-[2m      - element is visible, enabled and stable[22m
-[2m      - scrolling into view if needed[22m
-[2m      - done scrolling[22m
-[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m    - retrying click action[22m
-[2m    - waiting 20ms[22m
-[2m    2 × waiting for element to be visible, enabled and stable[22m
-[2m      - element is visible, enabled and stable[22m
-[2m      - scrolling into view if needed[22m
-[2m      - done scrolling[22m
-[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m    - retrying click action[22m
-[2m      - waiting 100ms[22m
-[2m    57 × waiting for element to be visible, enabled and stable[22m
-[2m       - element is visible, enabled and stable[22m
-[2m       - scrolling into view if needed[22m
-[2m       - done scrolling[22m
-[2m       - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m     - retrying click action[22m
-[2m       - waiting 500ms[22m
+   Summary
+═══════════════════════════════════════════
+📊 Parsed from CSV: 168 posts
+📋 Total in sheet: 244 posts (incl. old from snapshot)
+🔄 Synced: 0 additional tabs (0 updates)
 
-[ERROR] 
-Stack: elementHandle.click: Timeout 30000ms exceeded.
-Call log:
-[2m  - attempting click action[22m
-[2m    2 × waiting for element to be visible, enabled and stable[22m
-[2m      - element is visible, enabled and stable[22m
-[2m      - scrolling into view if needed[22m
-[2m      - done scrolling[22m
-[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m    - retrying click action[22m
-[2m    - waiting 20ms[22m
-[2m    2 × waiting for element to be visible, enabled and stable[22m
-[2m      - element is visible, enabled and stable[22m
-[2m      - scrolling into view if needed[22m
-[2m      - done scrolling[22m
-[2m      - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m    - retrying click action[22m
-[2m      - waiting 100ms[22m
-[2m    57 × waiting for element to be visible, enabled and stable[22m
-[2m       - element is visible, enabled and stable[22m
-[2m       - scrolling into view if needed[22m
-[2m       - done scrolling[22m
-[2m       - <div tabindex="-1" class="x1uvtmcs x4k7w5x x1h91t0o x1beo9mf xaigb6o x12ejxvf x3igimt xarpa2k xedcshv x1lytzrv x1t2pt76 x7ja8zs x1n2onr6 x1qrby5j x1jfb8zj">…</div> from <div class="__fb-dark-mode x1n2onr6 x1vjfegm">…</div> subtree intercepts pointer events[22m
-[2m     - retrying click action[22m
-[2m       - waiting 500ms[22m
-
-    at FacebookCrawler.exportData (/Users/jc/Documents/TQCoding/KPopNow/kpop-content/src/facebook/crawler.js:75:29)
-    at async withRetry (/Users/jc/Documents/TQCoding/KPopNow/kpop-content/src/facebook/index.js:16:20)
-    at async main (/Users/jc/Documents/TQCoding/KPopNow/kpop-content/src/facebook/index.js:54:25)
+✅ Done!
+Browser closed

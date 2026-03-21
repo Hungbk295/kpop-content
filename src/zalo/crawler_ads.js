@@ -1,13 +1,32 @@
 const { chromium } = require('playwright');
 const readline = require('readline');
+const fs = require('fs');
 const config = require('../config');
 const path = require('path');
 const { parseMetricValue } = require('../shared/metrics');
 
 class ZaloAdsCrawler {
-    constructor() {
+    /**
+     * @param {object} [options]
+     * @param {string} [options.date] - Target date in M/D/YYYY or YYYY-MM-DD format. Defaults to yesterday.
+     */
+    constructor(options = {}) {
         this.context = null;
         this.page = null;
+        this.targetDate = options.date ? this._parseDate(options.date) : null;
+    }
+
+    _parseDate(str) {
+        // Support M/D/YYYY or YYYY-MM-DD
+        let d;
+        if (str.includes('-')) {
+            d = new Date(str + 'T00:00:00+07:00');
+        } else {
+            const [m, day, y] = str.split('/').map(Number);
+            d = new Date(y, m - 1, day);
+        }
+        if (isNaN(d.getTime())) throw new Error(`Invalid date: ${str}`);
+        return d;
     }
 
     async waitForUserInput(message = 'Press ENTER to continue...') {
@@ -199,14 +218,38 @@ class ZaloAdsCrawler {
     }
 
     /**
-     * Open daterangepicker, click yesterday's date twice, then click "Áp dụng".
+     * Get target date's start/end unix timestamps in Vietnam timezone (UTC+7).
+     * Uses this.targetDate if set, otherwise defaults to yesterday.
      */
-    async selectYesterday() {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const day = yesterday.getDate();
+    getDateRange() {
+        let target;
+        if (this.targetDate) {
+            target = this.targetDate;
+        } else {
+            const now = new Date();
+            const vnNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+            vnNow.setDate(vnNow.getDate() - 1);
+            target = vnNow;
+        }
 
-        console.log(`   📍 Selecting yesterday (day ${day})...`);
+        const y = target.getFullYear();
+        const m = target.getMonth();
+        const d = target.getDate();
+        // VN midnight = UTC (y, m, d) - 7h
+        const vnMidnight = new Date(Date.UTC(y, m, d) - 7 * 3600 * 1000);
+        const start = Math.floor(vnMidnight.getTime() / 1000);
+        const end = start + 86399;
+        const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        return { start, end, day: d, dateStr };
+    }
+
+    /**
+     * Open daterangepicker, click the target date twice, then click "Áp dụng".
+     */
+    async selectDate() {
+        const { day } = this.getDateRange();
+
+        console.log(`   📍 Selecting date (day ${day})...`);
 
         // Click daterangepicker input to open calendar
         await this.page.click('.tw-form-input-date input[daterangepicker]');
@@ -223,7 +266,114 @@ class ZaloAdsCrawler {
         await this.page.click('button.applyBtn');
         await this.page.waitForTimeout(2000);
 
-        console.log(`   ✅ Selected yesterday: day ${day}`);
+        console.log(`   ✅ Selected day ${day}`);
+    }
+
+    /**
+     * Fetch campaign report data via API (instead of CSV download).
+     */
+    async fetchReportData(campaignId) {
+        const { start, end } = this.getDateRange();
+        console.log(`   📍 Fetching report data via API (${start} - ${end})...`);
+
+        // API 1: Campaign report
+        const reportUrl = `https://ads.zalo.me/reportapi/v2/campaigns/${campaignId}?filter=%5B%5D&campaignId=${campaignId}&startDate=${start}&endDate=${end}`;
+        const campaignReport = await this.page.evaluate(async (url) => {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json, text/plain, */*' }
+            });
+            return res.json();
+        }, reportUrl);
+        console.log(`   ✅ Campaign report fetched`);
+
+        // API 2: Unique user
+        const uniqueUserUrl = `https://ads.zalo.me/reportapi/v2/unique-user?campaignId=${campaignId}&start=${start}&end=${end}`;
+        const uniqueUser = await this.page.evaluate(async (url) => {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json, text/plain, */*' }
+            });
+            return res.json();
+        }, uniqueUserUrl);
+        console.log(`   ✅ Unique user data fetched`);
+
+        return { campaignReport, uniqueUser };
+    }
+
+    /**
+     * Convert JSON report data to CSV and save to file.
+     * Returns the CSV file path.
+     */
+    saveReportAsCsv(campaignId, reportData) {
+        const { dateStr } = this.getDateRange();
+
+        const csvPath = path.join(path.resolve(config.DATA_DIR), `zalo_ads_${campaignId}_${dateStr}.csv`);
+
+        // Also save raw JSON backup
+        const jsonPath = path.join(path.resolve(config.DATA_DIR), `zalo_ads_${campaignId}_${dateStr}.json`);
+        fs.writeFileSync(jsonPath, JSON.stringify(reportData, null, 2));
+        console.log(`   💾 JSON backup saved to ${jsonPath}`);
+
+        // Convert campaign report to CSV rows
+        const { campaignReport, uniqueUser } = reportData;
+        const rows = [];
+
+        // Extract rows from campaignReport
+        if (campaignReport && campaignReport.data && Array.isArray(campaignReport.data)) {
+            // Use first row's keys as headers
+            if (campaignReport.data.length > 0) {
+                const headers = Object.keys(campaignReport.data[0]);
+                rows.push(headers.join(','));
+                for (const row of campaignReport.data) {
+                    const values = headers.map(h => {
+                        const val = row[h];
+                        if (val === null || val === undefined) return '';
+                        const str = String(val);
+                        // Escape CSV values with commas or quotes
+                        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                            return `"${str.replace(/"/g, '""')}"`;
+                        }
+                        return str;
+                    });
+                    rows.push(values.join(','));
+                }
+            }
+        } else if (campaignReport && typeof campaignReport === 'object') {
+            // Flat object - try to extract any array
+            for (const key of Object.keys(campaignReport)) {
+                if (Array.isArray(campaignReport[key]) && campaignReport[key].length > 0) {
+                    const arr = campaignReport[key];
+                    const headers = Object.keys(arr[0]);
+                    rows.push(headers.join(','));
+                    for (const row of arr) {
+                        const values = headers.map(h => {
+                            const val = row[h];
+                            if (val === null || val === undefined) return '';
+                            const str = String(val);
+                            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                                return `"${str.replace(/"/g, '""')}"`;
+                            }
+                            return str;
+                        });
+                        rows.push(values.join(','));
+                    }
+                    break;
+                }
+            }
+        }
+
+        // If no structured data found, dump the whole response as CSV
+        if (rows.length === 0) {
+            rows.push('key,value');
+            rows.push(`campaignReport,"${JSON.stringify(campaignReport).replace(/"/g, '""')}"`);
+            rows.push(`uniqueUser,"${JSON.stringify(uniqueUser).replace(/"/g, '""')}"`);
+        }
+
+        fs.writeFileSync(csvPath, rows.join('\n'), 'utf8');
+        console.log(`   💾 CSV saved to ${csvPath} (${rows.length - 1} data rows)`);
+
+        return csvPath;
     }
 
     async scrapeAdCampaign(campaignId, adsIds) {
@@ -234,6 +384,11 @@ class ZaloAdsCrawler {
             waitUntil: 'networkidle',
             timeout: 30000
         });
+
+        const permissionProfile = this.page.locator('xpath=/html/body/main/ul[2]/li[1]');
+        if (await permissionProfile.count() > 0) {
+            await permissionProfile.click();
+        }
         await this.page.waitForTimeout(3000);
 
         // Step 1: Select active ads
@@ -245,24 +400,16 @@ class ZaloAdsCrawler {
         // Step 3: Select breakdown options
         await this.selectBreakdownOptions(['Ngày', 'Hiển thị quảng cáo']);
 
-        // Step 4: Select yesterday's date
-        await this.selectYesterday();
+        // Step 4: Select target date
+        await this.selectDate();
 
-        // Step 5: Click "Tải báo cáo" and handle download
-        console.log('   📍 Clicking "Tải báo cáo"...');
-        const downloadPromise = this.page.waitForEvent('download');
-        await this.page.click('span:text-is("Tải báo cáo")');
-        const download = await downloadPromise;
+        // Step 5: Fetch report data via API
+        const reportData = await this.fetchReportData(campaignId);
 
-        // Save with proper filename
-        const savePath = path.join(path.resolve(config.DATA_DIR), `zalo_ads_${campaignId}.csv`);
-        await download.saveAs(savePath);
-        console.log(`   ✅ Report saved to ${savePath}`);
+        // Step 6: Save as CSV
+        const csvPath = this.saveReportAsCsv(campaignId, reportData);
 
-        // Pause - next steps will be added
-        await this.waitForUserInput(`Campaign ${campaignId} report downloaded. Nhấn ENTER để tiếp tục...`);
-
-        return savePath;
+        return { reportData, csvPath };
     }
 
     async close() {

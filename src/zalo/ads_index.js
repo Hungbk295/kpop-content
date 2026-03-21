@@ -2,46 +2,61 @@ const { ZaloAdsCrawler } = require('./crawler_ads');
 const { ZaloAdsSheetsManager } = require('./ads_sheets');
 const { initLogger } = require('../shared/logger');
 const config = require('../config');
-const fs = require('fs');
-const path = require('path');
 
 async function main() {
     const logger = initLogger('zalo-ads');
 
+    // Parse --date arg (e.g. --date 3/7/2026 or --date 2026-03-07)
+    const args = process.argv.slice(2);
+    const dateIdx = args.indexOf('--date');
+    const dateArg = dateIdx >= 0 ? args[dateIdx + 1] : undefined;
+
     console.log('═══════════════════════════════════════════');
     console.log('   K-POP Zalo Ads Metrics Crawler');
+    if (dateArg) console.log(`   Target date: ${dateArg}`);
     console.log('═══════════════════════════════════════════\n');
 
-    const totalSteps = 2;
+    const crawler = new ZaloAdsCrawler({ date: dateArg });
+    let sheetsManager = null;
 
     try {
-        // Step 1: Crawl Zalo Ads
-        console.log(`\n📌 Step 1/${totalSteps}: Crawling Zalo Ads...`);
-        const crawler = new ZaloAdsCrawler();
-        let results = {};
+        // Init browser
+        await crawler.init();
 
-        try {
-            await crawler.init();
-            results = await crawler.scrapeAllAds();
-            
-            // Save backup
-            const backupFile = path.join(config.DATA_DIR, `zalo_ads_${new Date().toISOString().split('T')[0]}.json`);
-            fs.writeFileSync(backupFile, JSON.stringify(results, null, 2));
-            console.log(`💾 Backup saved to ${backupFile}`);
-        } finally {
-            await crawler.close();
+        // Init sheets
+        if (config.ZALO_ADS?.SHEETS?.SPREADSHEET_ID) {
+            sheetsManager = new ZaloAdsSheetsManager();
+            await sheetsManager.init();
         }
 
-        // Step 2: Sync to Google Sheets
-        console.log(`\n📌 Step 2/${totalSteps}: Syncing Zalo Ads to Google Sheets...`);
+        const campaigns = config.ZALO_ADS.CAMPAIGNS;
+        const campaignIds = Object.keys(campaigns);
+        const summary = [];
 
-        if (config.ZALO_ADS?.SHEETS?.SPREADSHEET_ID) {
-            const sheetsManager = new ZaloAdsSheetsManager();
-            await sheetsManager.init();
-            const syncResult = await sheetsManager.syncAllAds(results);
-            console.log(`✅ Sync complete: ${syncResult.successCount} ads synced`);
-        } else {
-            console.log('⚠️  Zalo Ads sheet not configured');
+        for (let i = 0; i < campaignIds.length; i++) {
+            const campaignId = campaignIds[i];
+            const adsIds = campaigns[campaignId];
+
+            console.log(`\n📌 Campaign ${i + 1}/${campaignIds.length}: ${campaignId}`);
+            console.log('─────────────────────────────────────');
+
+            try {
+                // Step 1: Crawl & save JSON/CSV
+                const { reportData, csvPath } = await crawler.scrapeAdCampaign(campaignId, adsIds);
+
+                // Step 2: Sync report data to Google Sheets
+                if (sheetsManager && reportData) {
+                    const { dateStr } = crawler.getDateRange();
+                    const syncResult = await sheetsManager.syncFromReport(reportData, campaignId, dateStr, adsIds);
+                    summary.push({ campaignId, status: 'success', rows: syncResult.insertedCount });
+                    console.log(`   ✅ Campaign ${campaignId} synced (${syncResult.insertedCount} rows)`);
+                } else {
+                    summary.push({ campaignId, status: 'success', rows: 0, note: 'no sheets config' });
+                }
+            } catch (error) {
+                console.error(`   ❌ Campaign ${campaignId} failed: ${error.message}`);
+                summary.push({ campaignId, status: 'failed', error: error.message });
+            }
         }
 
         // Summary
@@ -49,11 +64,11 @@ async function main() {
         console.log('   Summary');
         console.log('═══════════════════════════════════════════');
 
-        for (const [campaignId, result] of Object.entries(results)) {
-            if (result.data) {
-                console.log(`📊 Campaign ${campaignId}: ${JSON.stringify(result.data)}`);
+        for (const item of summary) {
+            if (item.status === 'success') {
+                console.log(`   ✅ Campaign ${item.campaignId}: ${item.rows} rows synced`);
             } else {
-                console.log(`❌ Campaign ${campaignId}: Failed - ${result.error}`);
+                console.log(`   ❌ Campaign ${item.campaignId}: ${item.error}`);
             }
         }
 
@@ -67,6 +82,7 @@ async function main() {
         console.error('\nStack:', error.stack);
         process.exit(1);
     } finally {
+        await crawler.close();
         logger.restore();
     }
 }

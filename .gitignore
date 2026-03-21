@@ -32,3 +32,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+browser-data
+browser-data-fb
+browser-data-zalo
