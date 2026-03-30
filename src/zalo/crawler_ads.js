@@ -64,8 +64,30 @@ class ZaloAdsCrawler {
         console.log('✅ Browser ready!');
     }
 
+    /**
+     * Navigate to campaigns page and click profile avatar to warm up the session.
+     */
+    async warmUpSession() {
+        console.log('🔄 Warming up session: navigating to campaigns page...');
+        await this.page.goto('https://ads.zalo.me/client/campaigns/', {
+            waitUntil: 'networkidle',
+            timeout: 30000
+        });
+        await this.page.waitForTimeout(5000);
+        console.log('✅ Page reloaded, current URL:', this.page.url());
+
+        console.log('🔄 Clicking profile avatar...');
+        const avatar = this.page.locator('xpath=//*[@id="app-n-user-master"]/img');
+        await avatar.click();
+        await this.page.waitForTimeout(3000);
+        console.log('✅ Session warmed up');
+    }
+
     async scrapeAllAds() {
         console.log('📊 Starting Zalo Ads scraping...');
+
+        // Warm up: visit campaigns page and click profile avatar
+        await this.warmUpSession();
 
         const campaigns = config.ZALO_ADS.CAMPAIGNS;
         const results = {};

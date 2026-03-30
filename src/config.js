@@ -131,7 +131,7 @@ module.exports = {
         // Campaigns with their active ads IDs
         CAMPAIGNS: {
             '6658001': ['19829771', '19829765', '19829748'],
-            '6652890': ['19821523', '19821522', '19821496']
+            '6672558': []
         },
 
         SHEETS: {

@@ -294,8 +294,8 @@ class ZaloAdsSheetsManager {
             return { insertedCount: 0 };
         }
 
-        // Filter by configured ads IDs
-        const filteredAds = adsIds
+        // Filter by configured ads IDs (skip if empty or not provided)
+        const filteredAds = (adsIds && adsIds.length > 0)
             ? ads.filter(ad => adsIds.includes(String(ad.id)))
             : ads;
 
@@ -337,14 +337,16 @@ class ZaloAdsSheetsManager {
             { key: 'cost',        label: '광고비' },
         ];
 
-        // Build 5 rows: cols A-D = group values, col I = label, col J = date
+        // Build 5 rows: Set A→col A(0), B→col B(1), C→col C(2), D→col D(3), col I = label, col J = date
+        const letterToCol = { A: 0, B: 1, C: 2, D: 3 };
         const sheetRows = metrics.map(metric => {
             const row = new Array(10).fill('');
-            sortedLetters.forEach((letter, i) => {
-                if (i < 4) {
-                    row[i] = groups[letter][metric.key];
+            for (const letter of sortedLetters) {
+                const colIdx = letterToCol[letter];
+                if (colIdx !== undefined) {
+                    row[colIdx] = groups[letter][metric.key];
                 }
-            });
+            }
             row[8] = metric.label;
             row[9] = displayDate;
             return row;
