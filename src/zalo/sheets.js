@@ -8,10 +8,18 @@ class ZaloSheetsManager {
         this.sheets = null;
         this.auth = null;
         this._sheetId = null;
-        this.type = type; // 'oa' or 'miniapp'
-        this.sheetConfig = this.type === 'oa'
-            ? config.ZALO.SHEETS.OA
-            : config.ZALO.SHEETS.MINIAPP;
+        this.type = type; // 'oa', 'miniapp', or 'hourly'
+        
+        if (this.type === 'oa') {
+            this.sheetConfig = config.ZALO.SHEETS.OA;
+        } else if (this.type === 'miniapp') {
+            this.sheetConfig = config.ZALO.SHEETS.MINIAPP;
+        } else if (this.type === 'hourly') {
+            this.sheetConfig = {
+                SHEET_NAME: config.ZALO.HOURLY_STATS.SHEET_NAME,
+                DATA_START_ROW: 2
+            };
+        }
     }
 
     async init() {
@@ -141,6 +149,80 @@ class ZaloSheetsManager {
 
         console.log(`✅ Inserted new row at row ${DATA_START_ROW} with MiniApp (B-H) and OA (K-R) data`);
         return { insertedCount: 1, updatedCount: 0 };
+    }
+
+    async syncHourlyStats(hourlyData) {
+        console.log(`\n📊 Syncing Hourly Pageview stats to sheet...`);
+
+        await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
+
+        // Read existing times from column B (the full time string) to avoid duplicates
+        // Note: New structure will be A: Hour, B: Time, C: Visit
+        const existingRows = await this.readSheet('B:B');
+        const existingTimes = new Set(existingRows.map(row => row[0]));
+
+        // Filter out data points that already exist in the sheet
+        const newRows = hourlyData
+            .filter(item => !existingTimes.has(item.timeStr))
+            .map(item => [item.hour, item.timeStr, item.count]);
+
+        if (newRows.length === 0) {
+            console.log('📋 No new hourly stats to add.');
+            return { updatedCount: 0 };
+        }
+
+        console.log(`📝 Appending ${newRows.length} new hourly data points...`);
+
+        // Header if sheet is empty
+        const isNewSheet = (await this.readSheet('A1')).length === 0;
+        const dataToUpload = isNewSheet ? [['hour', 'time', 'visit'], ...newRows] : newRows;
+
+        await this.sheets.spreadsheets.values.append({
+            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            range: `${this.sheetConfig.SHEET_NAME}!A1`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: dataToUpload
+            }
+        });
+
+        console.log(`✅ Appended ${newRows.length} hourly stats in tab "${this.sheetConfig.SHEET_NAME}"`);
+        return { updatedCount: newRows.length };
+    }
+
+    async clearSheet() {
+        console.log(`\n🧹 Clearing tab "${this.sheetConfig.SHEET_NAME}"...`);
+        await this.sheets.spreadsheets.values.clear({
+            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            range: `${this.sheetConfig.SHEET_NAME}!A1:Z10000`
+        });
+        console.log(`✅ Tab "${this.sheetConfig.SHEET_NAME}" cleared!`);
+    }
+
+    async ensureTabExists(sheetName) {
+        const res = await this.sheets.spreadsheets.get({
+            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            fields: 'sheets.properties.title'
+        });
+
+        const exists = res.data.sheets.some(s => s.properties.title === sheetName);
+
+        if (!exists) {
+            console.log(`📝 Creating new tab: "${sheetName}"...`);
+            await this.sheets.spreadsheets.batchUpdate({
+                spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+                resource: {
+                    requests: [{
+                        addSheet: {
+                            properties: {
+                                title: sheetName
+                            }
+                        }
+                    }]
+                }
+            });
+            console.log(`✅ Created tab "${sheetName}"`);
+        }
     }
 
     async getSheetId() {

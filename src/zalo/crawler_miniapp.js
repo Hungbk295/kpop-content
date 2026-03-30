@@ -45,16 +45,16 @@ class ZaloMiniAppCrawler {
         // Navigate TWICE - first time gets redirected to homepage
         console.log('   🔄 First navigation (may redirect to homepage)...');
         await this.page.goto(url, {
-            waitUntil: 'networkidle',
-            timeout: 30000
+            waitUntil: 'load',
+            timeout: 60000
         });
         await this.page.waitForTimeout(2000);
 
         // Second navigation - should work correctly
         console.log('   🔄 Second navigation (should reach statistics page)...');
         await this.page.goto(url, {
-            waitUntil: 'networkidle',
-            timeout: 30000
+            waitUntil: 'load',
+            timeout: 60000
         });
         await sleep(30000);
         await this.page.waitForTimeout(3000);

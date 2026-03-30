@@ -176,6 +176,13 @@ module.exports = {
                 },
                 DATA_START_ROW: parseInt(process.env.ZALO_MINIAPP_DATA_START_ROW, 10) || 9
             }
+        },
+
+        // Hourly Pageview Stats config
+        HOURLY_STATS: {
+            API_URL: 'https://miniapp.zaloplatforms.com/app/get-stats',
+            TOKEN: process.env.ZALO_HOURLY_TOKEN || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1ODExOTcyODI2MzcxOTQyNjc2IiwiYXBwSWQiOiIxNzc0NjcxNDkzMTQ0ODQ4OTcxIiwiaXNzIjoiYXV0aDAiLCJleHAiOjE3NzQ5NDE0Mjd9.Teeen1FtatDpqJJsxyJAs3-nwRCCnmFVe7Pkod-SV2k',
+            SHEET_NAME: 'Hourly Stats'
         }
     }
 };

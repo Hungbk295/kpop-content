@@ -65,13 +65,20 @@ async function runPipeline() {
   log('========================================');
 }
 
-// Schedule cronjob - runs at 9:00 AM every day
-// Cron format: second minute hour day month weekday
-cron.schedule('54 10 * * *', async () => {
-  log('Cron job triggered');
+// Schedule daily metrics - runs at 9:00 AM every day
+cron.schedule('0 9 * * *', async () => {
+  log('Daily metrics pipeline triggered');
   await runPipeline();
 }, {
-  timezone: "Asia/Ho_Chi_Minh" // UTC+7
+  timezone: "Asia/Ho_Chi_Minh"
+});
+
+// Schedule hourly Zalo stats - runs every hour at minute 0
+cron.schedule('0 * * * *', async () => {
+  log('Zalo Hourly Stats task triggered');
+  await runCommand('npm run zalo:hourly', 'Zalo Hourly Stats');
+}, {
+  timezone: "Asia/Ho_Chi_Minh"
 });
 
 log('Cronjob scheduler started');
