@@ -182,7 +182,10 @@ module.exports = {
         HOURLY_STATS: {
             API_URL: 'https://miniapp.zaloplatforms.com/app/get-stats',
             TOKEN: process.env.ZALO_HOURLY_TOKEN || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1ODExOTcyODI2MzcxOTQyNjc2IiwiYXBwSWQiOiIxNzc0NjcxNDkzMTQ0ODQ4OTcxIiwiaXNzIjoiYXV0aDAiLCJleHAiOjE3NzQ5NDE0Mjd9.Teeen1FtatDpqJJsxyJAs3-nwRCCnmFVe7Pkod-SV2k',
-            SHEET_NAME: 'Hourly Stats'
+            SHEET_NAME: 'Hourly Stats',
+            SECONDARY_SPREADSHEET_ID: process.env.ZALO_SECONDARY_SPREADSHEET_ID || '1DGJSHPFxtiwlhsT4nz83RPUq9MeAdPuY3G_NSK3EeO0',
+            // Default to false for safety to prevent accidental clearing of the sheet
+            ALLOW_RESET: process.env.ZALO_ALLOW_RESET === 'true'
         }
     }
 };

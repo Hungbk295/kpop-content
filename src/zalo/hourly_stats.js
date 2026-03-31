@@ -19,7 +19,12 @@ async function main() {
         const args = process.argv.slice(2);
         const startArg = args.find(a => a.startsWith('--start='))?.split('=')[1];
         const endArg = args.find(a => a.startsWith('--end='))?.split('=')[1];
-        const isReset = args.includes('--reset');
+        let isReset = args.includes('--reset');
+
+        if (isReset && !config.ZALO.HOURLY_STATS.ALLOW_RESET) {
+            console.log('⚠️ RESET MODE is disabled in config. Ignoring --reset flag and syncing incrementally.');
+            isReset = false;
+        }
 
         const now = new Date();
         let startOfDay;
@@ -79,11 +84,10 @@ async function main() {
             const d = date.getDate().toString().padStart(2, '0');
             const h = date.getHours();
             
-            // Format: 2026년03월30일 0:00
-            const timeStr = `${y}년${m}월${d}일 ${h}:00`;
+            // Format: 2026-03-31 9:00
+            const timeStr = `${y}-${m}-${d} ${h}:00`;
             
             return {
-                hour: h,
                 timeStr,
                 count: item.count
             };

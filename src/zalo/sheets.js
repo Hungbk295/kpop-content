@@ -156,15 +156,14 @@ class ZaloSheetsManager {
 
         await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
 
-        // Read existing times from column B (the full time string) to avoid duplicates
-        // Note: New structure will be A: Hour, B: Time, C: Visit
-        const existingRows = await this.readSheet('B:B');
+        // Read existing times from column A to avoid duplicates
+        const existingRows = await this.readSheet('A:A');
         const existingTimes = new Set(existingRows.map(row => row[0]));
 
         // Filter out data points that already exist in the sheet
         const newRows = hourlyData
             .filter(item => !existingTimes.has(item.timeStr))
-            .map(item => [item.hour, item.timeStr, item.count]);
+            .map(item => [item.timeStr, item.count]);
 
         if (newRows.length === 0) {
             console.log('📋 No new hourly stats to add.');
@@ -175,28 +174,119 @@ class ZaloSheetsManager {
 
         // Header if sheet is empty
         const isNewSheet = (await this.readSheet('A1')).length === 0;
-        const dataToUpload = isNewSheet ? [['hour', 'time', 'visit'], ...newRows] : newRows;
+        const dataToUpload = isNewSheet ? [['time', 'visit'], ...newRows] : newRows;
 
+        // Primary sheet append
         await this.sheets.spreadsheets.values.append({
             spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!A1`,
+            range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
             valueInputOption: 'USER_ENTERED',
             resource: {
                 values: dataToUpload
             }
         });
 
-        console.log(`✅ Appended ${newRows.length} hourly stats in tab "${this.sheetConfig.SHEET_NAME}"`);
+        // Secondary sheet append if configured
+        if (config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID) {
+            await this.sheets.spreadsheets.values.append({
+                spreadsheetId: config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID,
+                range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: {
+                    values: dataToUpload
+                }
+            });
+            console.log(`✅ Also appended to secondary sheet ID ${config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID}`);
+        }
+
+        // Helper to force Number format on Column B
+        const forceNumberFormat = async (spreadsheetId) => {
+            const sheetId = await this.getSheetIdForSpreadsheet(spreadsheetId, this.sheetConfig.SHEET_NAME);
+            await this.sheets.spreadsheets.batchUpdate({
+                spreadsheetId,
+                resource: {
+                    requests: [{
+                        repeatCell: {
+                            range: {
+                                sheetId,
+                                startColumnIndex: 1, // Column B
+                                endColumnIndex: 2
+                            },
+                            cell: {
+                                userEnteredFormat: {
+                                    numberFormat: {
+                                        type: 'NUMBER',
+                                        pattern: '0'
+                                    }
+                                }
+                            },
+                            fields: 'userEnteredFormat.numberFormat'
+                        }
+                    }]
+                }
+            });
+        };
+
+        await forceNumberFormat(config.ZALO.SHEETS.SPREADSHEET_ID);
+        if (config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID) {
+            await forceNumberFormat(config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID);
+        }
+
+        console.log(`✅ Appended ${newRows.length} hourly stats and forced numeric formatting.`);
         return { updatedCount: newRows.length };
     }
 
-    async clearSheet() {
-        console.log(`\n🧹 Clearing tab "${this.sheetConfig.SHEET_NAME}"...`);
-        await this.sheets.spreadsheets.values.clear({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!A1:Z10000`
+    async getSheetIdForSpreadsheet(spreadsheetId, sheetName) {
+        const res = await this.sheets.spreadsheets.get({
+            spreadsheetId,
+            fields: 'sheets.properties'
         });
-        console.log(`✅ Tab "${this.sheetConfig.SHEET_NAME}" cleared!`);
+        const sheet = res.data.sheets.find(s => s.properties.title === sheetName);
+        return sheet ? sheet.properties.sheetId : 0;
+    }
+
+    async clearSheet() {
+        console.log(`\n🧹 Clearing tab "${this.sheetConfig.SHEET_NAME}" (values and formatting)...`);
+        
+        const clearSpreadsheet = async (spreadsheetId) => {
+            // 1. Clear values
+            await this.sheets.spreadsheets.values.clear({
+                spreadsheetId,
+                range: `'${this.sheetConfig.SHEET_NAME}'!A1:Z10000`
+            });
+
+            // 2. Clear formatting
+            const sheetId = await this.getSheetIdForSpreadsheet(spreadsheetId, this.sheetConfig.SHEET_NAME);
+            if (sheetId) {
+                await this.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId,
+                    resource: {
+                        requests: [{
+                            updateCells: {
+                                range: {
+                                    sheetId: sheetId,
+                                    startRowIndex: 0,
+                                    endRowIndex: 10000,
+                                    startColumnIndex: 0,
+                                    endColumnIndex: 26
+                                },
+                                fields: 'userEnteredFormat'
+                            }
+                        }]
+                    }
+                });
+            }
+        };
+
+        // Clear primary sheet
+        await clearSpreadsheet(config.ZALO.SHEETS.SPREADSHEET_ID);
+
+        // Clear secondary sheet if configured (only for hourly currently)
+        if (this.type === 'hourly' && config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID) {
+            await clearSpreadsheet(config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID);
+        }
+
+        console.log(`✅ Tab "${this.sheetConfig.SHEET_NAME}" fully cleared!`);
     }
 
     async ensureTabExists(sheetName) {
