@@ -17,8 +17,11 @@ class ZaloMiniAppCrawler {
 
         console.log('📁 User data dir:', userDataDir);
 
+        const isHeadless = process.env.HEADLESS === 'true' || process.env.NODE_ENV === 'production';
+        console.log(`🖥️  Browser Mode: ${isHeadless ? 'Headless (Background)' : 'UI Mode (Visible)'}`);
+
         this.context = await chromium.launchPersistentContext(userDataDir, {
-            headless: false,
+            headless: isHeadless,
             viewport: { width: 1400, height: 900 },
             locale: 'vi-VN',
             args: [
@@ -60,6 +63,53 @@ class ZaloMiniAppCrawler {
         await this.page.waitForTimeout(3000);
 
         console.log('✅ Zalo MiniApp statistics page loaded');
+    }
+
+    async getHourlyToken() {
+        console.log('\n🔐 Automatically extracting Zalo API token via Playwright session...');
+        await this.init();
+
+        return new Promise(async (resolve, reject) => {
+            let tokenFound = false;
+
+            // Listen to all requests to intercept the token
+            this.page.on('request', async (request) => {
+                const url = request.url();
+                if (url.includes('miniapp.zaloplatforms.com/')) {
+                    const headers = request.headers();
+                    const authHeader = headers['x-custom-authorization'] || headers['authorization'];
+                    
+                    if (authHeader && authHeader.startsWith('Bearer ') && !tokenFound) {
+                        tokenFound = true;
+                        const token = authHeader.replace('Bearer ', '');
+                        console.log('✅ Token successfully intercepted from network traffic!');
+                        resolve(token);
+                    }
+                }
+            });
+
+            try {
+                const url = config.ZALO.MINIAPP_URL;
+                // Navigate and trigger requests
+                console.log('   🔄 Navigating to trigger API calls...');
+                await this.page.goto(url, { waitUntil: 'load', timeout: 60000 });
+                await this.page.waitForTimeout(2000);
+                
+                // Wait up to 15 seconds for the token to be intercepted
+                for (let i = 0; i < 15; i++) {
+                    if (tokenFound) break;
+                    await sleep(1000);
+                }
+
+                if (!tokenFound) {
+                    reject(new Error('Timeout waiting for authenticated API request to intercept token.'));
+                }
+            } catch (error) {
+                reject(error);
+            } finally {
+                await this.close();
+            }
+        });
     }
 
     async scrapeMetrics() {

@@ -150,7 +150,7 @@ module.exports = {
 
         // Google Sheets config for Zalo
         SHEETS: {
-            SPREADSHEET_ID: process.env.ZALO_SPREADSHEET_ID || '175hqUyhsypAKeorVslqnUrqm5240nCvjlWtsJ1rdQpE',
+            SPREADSHEET_ID: process.env.ZALO_SPREADSHEET_ID || '1DGJSHPFxtiwlhsT4nz83RPUq9MeAdPuY3G_NSK3EeO0',
 
             // Zalo OA sheet config (not used yet - syncs to MINIAPP sheet)
             OA: {

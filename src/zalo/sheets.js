@@ -12,13 +12,16 @@ class ZaloSheetsManager {
         
         if (this.type === 'oa') {
             this.sheetConfig = config.ZALO.SHEETS.OA;
+            this.spreadsheetId = config.ZALO.SHEETS.SPREADSHEET_ID;
         } else if (this.type === 'miniapp') {
             this.sheetConfig = config.ZALO.SHEETS.MINIAPP;
+            this.spreadsheetId = config.ZALO.SHEETS.SPREADSHEET_ID;
         } else if (this.type === 'hourly') {
             this.sheetConfig = {
                 SHEET_NAME: config.ZALO.HOURLY_STATS.SHEET_NAME,
                 DATA_START_ROW: 2
             };
+            this.spreadsheetId = config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID;
         }
     }
 
@@ -60,7 +63,7 @@ class ZaloSheetsManager {
 
     async readSheet(range) {
         const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            spreadsheetId: this.spreadsheetId,
             range: `${this.sheetConfig.SHEET_NAME}!${range}`
         });
 
@@ -75,7 +78,7 @@ class ZaloSheetsManager {
         }));
 
         await this.sheets.spreadsheets.values.batchUpdate({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            spreadsheetId: this.spreadsheetId,
             resource: {
                 valueInputOption: 'USER_ENTERED',
                 data: data
@@ -131,7 +134,7 @@ class ZaloSheetsManager {
 
         // Update both ranges in a single batch
         await this.sheets.spreadsheets.values.batchUpdate({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            spreadsheetId: this.spreadsheetId,
             resource: {
                 valueInputOption: 'USER_ENTERED',
                 data: [
@@ -156,84 +159,116 @@ class ZaloSheetsManager {
 
         await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
 
-        // Read existing times from column A to avoid duplicates
+        // Read existing times from column A to avoid duplicates and allow updates
         const existingRows = await this.readSheet('A:A');
-        const existingTimes = new Set(existingRows.map(row => row[0]));
-
-        // Filter out data points that already exist in the sheet
-        const newRows = hourlyData
-            .filter(item => !existingTimes.has(item.timeStr))
-            .map(item => [item.timeStr, item.count]);
-
-        if (newRows.length === 0) {
-            console.log('📋 No new hourly stats to add.');
-            return { updatedCount: 0 };
+        
+        // Map time -> row index (1-based for A1 notation)
+        const timeToRowIndex = {};
+        for (let i = 0; i < existingRows.length; i++) {
+            if (existingRows[i][0]) {
+                const timeStr = existingRows[i][0].toString().trim();
+                timeToRowIndex[timeStr] = i + 1;
+            }
         }
 
-        console.log(`📝 Appending ${newRows.length} new hourly data points...`);
+        const updates = [];
+        const newRows = [];
 
-        // Header if sheet is empty
-        const isNewSheet = (await this.readSheet('A1')).length === 0;
-        const dataToUpload = isNewSheet ? [['time', 'visit'], ...newRows] : newRows;
-
-        // Primary sheet append
-        await this.sheets.spreadsheets.values.append({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
-            range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
-            valueInputOption: 'USER_ENTERED',
-            resource: {
-                values: dataToUpload
+        for (const item of hourlyData) {
+            const rowIdx = timeToRowIndex[item.timeStr];
+            if (rowIdx) {
+                // Time exists, UPDATE the count (Column B)
+                updates.push({
+                    range: `B${rowIdx}`,
+                    value: item.count
+                });
+            } else {
+                // Time doesn't exist, APPEND
+                newRows.push([item.timeStr, item.count]);
             }
-        });
+        }
 
-        // Secondary sheet append if configured
-        if (config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID) {
+        console.log(`📝 Found ${updates.length} existing times to update, and ${newRows.length} new times to append.`);
+
+        // 1. Update existing counts
+        if (updates.length > 0) {
+            const data = updates.map(u => ({
+                range: `'${this.sheetConfig.SHEET_NAME}'!${u.range}`,
+                values: [[u.value]]
+            }));
+            await this.sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: this.spreadsheetId,
+                resource: {
+                    valueInputOption: 'USER_ENTERED',
+                    data: data
+                }
+            });
+            console.log(`✅ Updated ${updates.length} existing counts in place.`);
+        }
+
+        // 2. Append new rows
+        if (newRows.length > 0) {
+            const isNewSheet = existingRows.length === 0;
+            const dataToUpload = isNewSheet ? [['time', 'visit', 'note'], ...newRows] : newRows;
+
             await this.sheets.spreadsheets.values.append({
-                spreadsheetId: config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID,
+                spreadsheetId: this.spreadsheetId,
                 range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
                 valueInputOption: 'USER_ENTERED',
                 resource: {
                     values: dataToUpload
                 }
             });
-            console.log(`✅ Also appended to secondary sheet ID ${config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID}`);
+            console.log(`✅ Appended ${newRows.length} new hourly stats.`);
         }
 
-        // Helper to force Number format on Column B
-        const forceNumberFormat = async (spreadsheetId) => {
-            const sheetId = await this.getSheetIdForSpreadsheet(spreadsheetId, this.sheetConfig.SHEET_NAME);
-            await this.sheets.spreadsheets.batchUpdate({
-                spreadsheetId,
-                resource: {
-                    requests: [{
-                        repeatCell: {
-                            range: {
-                                sheetId,
-                                startColumnIndex: 1, // Column B
-                                endColumnIndex: 2
-                            },
-                            cell: {
-                                userEnteredFormat: {
-                                    numberFormat: {
-                                        type: 'NUMBER',
-                                        pattern: '0'
-                                    }
-                                }
-                            },
-                            fields: 'userEnteredFormat.numberFormat'
+        // 3. Force formatting & SORT BY TIME
+        const sheetId = await this.getSheetIdForSpreadsheet(this.spreadsheetId, this.sheetConfig.SHEET_NAME);
+        
+        const requests = [
+            // Force number format on column B
+            {
+                repeatCell: {
+                    range: {
+                        sheetId,
+                        startColumnIndex: 1, // Column B
+                        endColumnIndex: 2
+                    },
+                    cell: {
+                        userEnteredFormat: {
+                            numberFormat: {
+                                type: 'NUMBER',
+                                pattern: '0'
+                            }
                         }
-                    }]
+                    },
+                    fields: 'userEnteredFormat.numberFormat'
                 }
-            });
-        };
+            },
+            // Sort sheet by Column A (Time) Ascending
+            {
+                sortRange: {
+                    range: {
+                        sheetId: sheetId,
+                        startRowIndex: 1 // Keep header untouched
+                    },
+                    sortSpecs: [
+                        {
+                            dimensionIndex: 0, // Column A
+                            sortOrder: 'ASCENDING'
+                        }
+                    ]
+                }
+            }
+        ];
 
-        await forceNumberFormat(config.ZALO.SHEETS.SPREADSHEET_ID);
-        if (config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID) {
-            await forceNumberFormat(config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID);
-        }
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            resource: { requests }
+        });
 
-        console.log(`✅ Appended ${newRows.length} hourly stats and forced numeric formatting.`);
-        return { updatedCount: newRows.length };
+        console.log(`✅ Forced numeric formatting and sorted the sheet chronologically!`);
+        return { updatedCount: updates.length, appendedCount: newRows.length };
     }
 
     async getSheetIdForSpreadsheet(spreadsheetId, sheetName) {
@@ -278,20 +313,15 @@ class ZaloSheetsManager {
             }
         };
 
-        // Clear primary sheet
-        await clearSpreadsheet(config.ZALO.SHEETS.SPREADSHEET_ID);
-
-        // Clear secondary sheet if configured (only for hourly currently)
-        if (this.type === 'hourly' && config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID) {
-            await clearSpreadsheet(config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID);
-        }
+        // Clear sheet
+        await clearSpreadsheet(this.spreadsheetId);
 
         console.log(`✅ Tab "${this.sheetConfig.SHEET_NAME}" fully cleared!`);
     }
 
     async ensureTabExists(sheetName) {
         const res = await this.sheets.spreadsheets.get({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            spreadsheetId: this.spreadsheetId,
             fields: 'sheets.properties.title'
         });
 
@@ -300,7 +330,7 @@ class ZaloSheetsManager {
         if (!exists) {
             console.log(`📝 Creating new tab: "${sheetName}"...`);
             await this.sheets.spreadsheets.batchUpdate({
-                spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+                spreadsheetId: this.spreadsheetId,
                 resource: {
                     requests: [{
                         addSheet: {
@@ -318,7 +348,7 @@ class ZaloSheetsManager {
     async getSheetId() {
         if (this._sheetId !== null) return this._sheetId;
         const res = await this.sheets.spreadsheets.get({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            spreadsheetId: this.spreadsheetId,
             fields: 'sheets.properties'
         });
         const sheet = res.data.sheets.find(
@@ -332,7 +362,7 @@ class ZaloSheetsManager {
         const sheetId = await this.getSheetId();
 
         await this.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: config.ZALO.SHEETS.SPREADSHEET_ID,
+            spreadsheetId: this.spreadsheetId,
             resource: {
                 requests: [{
                     insertDimension: {
