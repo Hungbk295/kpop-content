@@ -34,6 +34,8 @@ async function main() {
 
         const now = new Date();
         
+        console.log(`\n🚀 [EXECUTION TIME]: ${now.toLocaleString()}`);
+
         const parseDateTime = (arg) => {
             if (!arg) return null;
             // Handle YYYY-MM-DD as local start of day instead of UTC
@@ -87,8 +89,8 @@ async function main() {
         const startTime = startDateObj.getTime();
         const endTime = endArg ? parseDateTime(endArg).getTime() : now.getTime();
 
-        console.log(`\n📅 Start: ${new Date(startTime).toLocaleString()}`);
-        console.log(`⏱️  End: ${new Date(endTime).toLocaleString()}`);
+        console.log(`\n📅 Query Range Start: ${new Date(startTime).toLocaleString()}`);
+        console.log(`⏱️  Query Range End: ${new Date(endTime).toLocaleString()}`);
 
         // 2. Fetch data from Zalo API
         let token = config.ZALO.HOURLY_STATS.TOKEN;
