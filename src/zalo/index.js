@@ -20,41 +20,49 @@ async function main() {
     try {
         // Step 1: Zalo MiniApp and OA Crawling
         console.log(`\n📌 Step 1/${totalSteps}: Crawling Zalo MiniApp and OA...`);
-        const miniAppCrawler = new ZaloMiniAppCrawler();
+        const miniAppCrawler = new ZaloMiniAppCrawler('miniapp');
+        const oaCrawler = new ZaloMiniAppCrawler('oa');
         let miniAppMetrics = {};
         let oaMetrics = {};
 
         try {
             await miniAppCrawler.init();
-
             // Scrape MiniApp metrics
             miniAppMetrics = await miniAppCrawler.scrapeMetrics();
             console.log(`✅ Scraped MiniApp metrics`);
-
-            // Scrape OA metrics
-            oaMetrics = await miniAppCrawler.scrapeOAMetrics();
-            console.log(`✅ Scraped OA metrics`);
 
             // Save backup
             const miniAppBackupFile = path.join(config.DATA_DIR, `zalo_miniapp_metrics_${new Date().toISOString().split('T')[0]}.json`);
             fs.writeFileSync(miniAppBackupFile, JSON.stringify(miniAppMetrics, null, 2));
             console.log(`💾 MiniApp backup saved to ${miniAppBackupFile}`);
+        } finally {
+            await miniAppCrawler.close();
+        }
+
+        try {
+            await oaCrawler.init();
+            // Scrape OA metrics
+            oaMetrics = await oaCrawler.scrapeOAMetrics();
+            console.log(`✅ Scraped OA metrics`);
 
             const oaBackupFile = path.join(config.DATA_DIR, `zalo_oa_metrics_${new Date().toISOString().split('T')[0]}.json`);
             fs.writeFileSync(oaBackupFile, JSON.stringify(oaMetrics, null, 2));
             console.log(`💾 OA backup saved to ${oaBackupFile}`);
         } finally {
-            await miniAppCrawler.close();
+            await oaCrawler.close();
         }
 
-        // Step 2: Sync Zalo MiniApp and OA to Google Sheets
-        console.log(`\n📌 Step 2/${totalSteps}: Syncing Zalo MiniApp and OA to Google Sheets...`);
+        // Step 2: Sync Zalo OA to Google Sheets
+        console.log(`\n📌 Step 2/${totalSteps}: Syncing Zalo OA Followers to Google Sheets...`);
 
         if (config.ZALO?.SHEETS?.SPREADSHEET_ID) {
-            const miniAppSheets = new ZaloSheetsManager('miniapp');
-            await miniAppSheets.init();
-            const result = await miniAppSheets.syncMetrics(miniAppMetrics, oaMetrics);
-            console.log(`✅ Inserted ${result.insertedCount} row with MiniApp and OA data`);
+            // Also sync standalone OA Followers tab
+            if (config.ZALO.OA_FOLLOWERS?.SHEET_NAME) {
+                const oaFollowersSheets = new ZaloSheetsManager('oa_followers');
+                await oaFollowersSheets.init();
+                const oaResult = await oaFollowersSheets.syncOAFollowers(oaMetrics);
+                console.log(`✅ OA Followers synced: ${oaResult.appendedCount} appended, ${oaResult.updatedCount} updated.`);
+            }
         } else {
             console.log('⚠️  Zalo MiniApp sheet not configured');
         }

@@ -5,15 +5,20 @@ const { parseMetricValue } = require('../shared/metrics');
 const { sleep } = require('../utils/app');
 
 class ZaloMiniAppCrawler {
-    constructor() {
+    constructor(type = 'miniapp') {
         this.context = null;
         this.page = null;
+        this.type = type;
     }
 
     async init() {
-        console.log('🔐 Initializing Zalo MiniApp crawler...');
+        console.log(`🔐 Initializing Zalo ${this.type === 'oa' ? 'OA' : 'MiniApp'} crawler...`);
 
-        const userDataDir = path.resolve(config.ZALO.USER_DATA_DIR);
+        const dirPath = this.type === 'oa' 
+            ? (config.ZALO.OA_USER_DATA_DIR || './browser-data-zalo-oa')
+            : config.ZALO.USER_DATA_DIR;
+
+        const userDataDir = path.resolve(dirPath);
 
         console.log('📁 User data dir:', userDataDir);
 
@@ -164,7 +169,7 @@ class ZaloMiniAppCrawler {
             console.log('📍 Step 1: Navigating to Zalo OA manage page...');
             await this.page.goto('https://oa.zalo.me/manage/oa', {
                 waitUntil: 'load',
-                timeout: 30000
+                timeout: 60000
             });
             await this.page.waitForTimeout(3000);
 

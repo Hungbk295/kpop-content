@@ -17,7 +17,7 @@ class FacebookCrawler {
         console.log('User data dir:', userDataDir);
 
         this.context = await chromium.launchPersistentContext(userDataDir, {
-            headless: false,
+            headless: true,
             viewport: { width: 1400, height: 900 },
             args: [
                 '--disable-blink-features=AutomationControlled',
@@ -531,31 +531,19 @@ class FacebookCrawler {
 
         await this.page.waitForTimeout(3000);
 
-        // Use XPath to find followers link
+        // Evaluate and find the follower count recursively through text content
         const followerCount = await this.page.evaluate(() => {
-            // XPath: //a[contains(text(),'followers')]
-            const xpath = "//a[contains(text(),'followers')]";
-            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            const followerLink = result.singleNodeValue;
-
-            if (!followerLink) {
-                return null;
+            const links = document.querySelectorAll('a');
+            for (const link of links) {
+                const text = link.textContent.trim().toLowerCase();
+                if (text.includes('followers') || text.includes('người theo dõi')) {
+                    // Support numbers like "209", "1.2K", "3,4M", etc.
+                    const match = text.match(/(\d+[,.]?\d*[KMBkmb]?)/);
+                    if (match) {
+                        return match[1];
+                    }
+                }
             }
-
-            const text = followerLink.textContent.trim();
-            // Pattern: "209 Total followers" or "1.2K followers"
-
-            // Verify text contains "followers"
-            if (!text.toLowerCase().includes('followers')) {
-                return null;
-            }
-
-            // Extract number (support K, M, B suffix)
-            const match = text.match(/(\d+\.?\d*[KMB]?)/i);
-            if (match) {
-                return match[1];
-            }
-
             return null;
         });
 

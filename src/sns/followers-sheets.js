@@ -9,7 +9,7 @@ class SNSFollowersManager {
         this.sheets = null;
         this.auth = null;
         this.sheetConfig = config.SNS_FOLLOWERS;
-        this._sheetId = null;
+        this._sheetIds = {};
     }
 
     async init() {
@@ -46,306 +46,114 @@ class SNSFollowersManager {
         console.log('✅ Google Sheets API ready!');
     }
 
-    async readSheet(range, valueRenderOption = 'UNFORMATTED_VALUE') {
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!${range}`,
-            valueRenderOption
-        });
-
-        return response.data.values || [];
-    }
-
-    /**
-     * Find the first data row (newest entry, since sheet is newest-first)
-     * Uses FORMATTED_VALUE to avoid date serial number issues
-     */
-    async getFirstDataRow() {
-        const startRow = this.sheetConfig.DATA_START_ROW;
-        const rows = await this.readSheet(`A${startRow}:A${startRow}`, 'FORMATTED_VALUE');
-
-        if (rows.length === 0 || !rows[0][0] || !String(rows[0][0]).includes('/')) {
-            return null;
-        }
-
-        return {
-            rowNumber: startRow,
-            date: rows[0][0]
-        };
-    }
-
-    /**
-     * Find the last data row number (oldest entry, for cleanup purposes)
-     */
-    async findLastDataRow() {
-        const startRow = this.sheetConfig.DATA_START_ROW;
-        const rows = await this.readSheet(`A${startRow}:A1000`, 'FORMATTED_VALUE');
-
-        let lastDataRowIndex = -1;
-        for (let i = 0; i < rows.length; i++) {
-            const val = rows[i][0];
-            if (val && String(val).includes('/')) {
-                lastDataRowIndex = i;
-            }
-        }
-
-        if (lastDataRowIndex === -1) return null;
-
-        return {
-            rowNumber: startRow + lastDataRowIndex,
-            date: rows[lastDataRowIndex][0]
-        };
-    }
-
-    async getLatestDate() {
-        const firstRow = await this.getFirstDataRow();
-        if (!firstRow) return null;
-        return firstRow.date;
-    }
-
-    async getPreviousRow() {
-        const firstRow = await this.getFirstDataRow();
-        if (!firstRow) return null;
-
-        // Read that specific row with UNFORMATTED_VALUE for numeric data
-        const rowNum = firstRow.rowNumber;
-        const rows = await this.readSheet(`A${rowNum}:I${rowNum}`, 'UNFORMATTED_VALUE');
-
-        if (rows.length === 0) return null;
-
-        const row = rows[0];
-        return {
-            date: firstRow.date,
-            fbFollowers: parseMetricValue(row[1]),
-            fbGrowth: parseFloat(row[2]) || 0,
-            fbGrowthRate: parseFloat(row[3]) || 0,
-            tiktokFollowers: parseMetricValue(row[5]),
-            tiktokGrowth: parseFloat(row[6]) || 0,
-            tiktokGrowthRate: parseFloat(row[7]) || 0
-        };
-    }
-
-    /**
-     * Format date as d/m (matching existing sheet format, no year)
-     */
     formatDate(date) {
-        const day = date.getDate();
-        const month = date.getMonth() + 1;
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
         return `${day}/${month}`;
     }
 
-    async appendFollowerRow(date, fbCount, tiktokCount, tiktokLikesCount) {
-        const fbFollowers = parseMetricValue(fbCount);
-        const tiktokFollowers = parseMetricValue(tiktokCount);
-        const tiktokLikes = parseMetricValue(tiktokLikesCount);
-
+    async syncPlatformFollowers(platformName, sheetName, date, followersCount) {
+        if (!sheetName) return false;
+        
+        console.log(`\n📊 Syncing ${platformName} Followers to tab "${sheetName}"...`);
         const dateStr = this.formatDate(date);
+        const count = parseMetricValue(followersCount);
 
-        // Get previous row to calculate growth
-        const previousRow = await this.getPreviousRow();
-
-        let fbGrowth = 0;
-        let fbGrowthRate = 0;
-        let tiktokGrowth = 0;
-        let tiktokGrowthRate = 0;
-
-        if (previousRow) {
-            fbGrowth = fbFollowers - previousRow.fbFollowers;
-            fbGrowthRate = previousRow.fbFollowers > 0
-                ? (fbGrowth / previousRow.fbFollowers) * 100
-                : 0;
-
-            tiktokGrowth = tiktokFollowers - previousRow.tiktokFollowers;
-            tiktokGrowthRate = previousRow.tiktokFollowers > 0
-                ? (tiktokGrowth / previousRow.tiktokFollowers) * 100
-                : 0;
+        const checkRows = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            range: `'${sheetName}'!A:A`,
+            valueRenderOption: 'FORMATTED_VALUE'
+        }).catch(() => ({ data: { values: [] } }));
+        
+        const existingData = checkRows.data.values || [];
+        const timeToRowIndex = {};
+        for (let i = 0; i < existingData.length; i++) {
+            if (existingData[i][0]) {
+                const timeStr = existingData[i][0].toString().trim();
+                timeToRowIndex[timeStr] = i + 1; // 1-based index
+            }
         }
 
-        console.log(`📝 Inserting row at top: ${dateStr}`);
-        console.log(`   FB: ${fbFollowers} (${fbGrowth >= 0 ? '+' : ''}${fbGrowth}, ${fbGrowthRate.toFixed(2)}%)`);
-        console.log(`   TikTok: ${tiktokFollowers} (${tiktokGrowth >= 0 ? '+' : ''}${tiktokGrowth}, ${tiktokGrowthRate.toFixed(2)}%)`);
+        const isNewSheet = existingData.length === 0;
+        const rowData = [dateStr, count];
+        const rowIdx = timeToRowIndex[dateStr];
 
-        const insertRow = this.sheetConfig.DATA_START_ROW;
-        const sheetId = await this.getSheetId();
-
-        // Insert a blank row at DATA_START_ROW (pushes existing data down)
-        await this.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            resource: {
-                requests: [{
-                    insertDimension: {
-                        range: {
-                            sheetId,
-                            dimension: 'ROWS',
-                            startIndex: insertRow - 1, // 0-indexed
-                            endIndex: insertRow
-                        },
-                        inheritFromBefore: false
-                    }
-                }]
-            }
-        });
-
-        // Row: [Date, FB, FB Growth, FB Growth %, (skip E), TikTok, TikTok Growth, TikTok Growth %, (skip I), TikTok Likes]
-        // Columns: A, B, C, D, skip E (7-day change, manual), F, G, H, skip I (7-day change, manual), J
-        const batchData = [
-            {
-                range: `${this.sheetConfig.SHEET_NAME}!A${insertRow}:D${insertRow}`,
-                values: [[
-                    dateStr,
-                    fbFollowers,
-                    fbGrowth,
-                    fbGrowthRate / 100
-                ]]
-            },
-            {
-                range: `${this.sheetConfig.SHEET_NAME}!F${insertRow}:H${insertRow}`,
-                values: [[
-                    tiktokFollowers,
-                    tiktokGrowth,
-                    tiktokGrowthRate / 100
-                ]]
-            }
-        ];
-
-        if (tiktokLikes !== null && !isNaN(tiktokLikes)) {
-            batchData.push({
-                range: `${this.sheetConfig.SHEET_NAME}!J${insertRow}`,
-                values: [[tiktokLikes]]
+        if (rowIdx) {
+            console.log(`📝 Updating existing date ${dateStr} at row ${rowIdx} (${count} followers)`);
+            await this.sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+                resource: {
+                    valueInputOption: 'USER_ENTERED',
+                    data: [
+                        { range: `'${sheetName}'!B${rowIdx}`, values: [[count]] }
+                    ]
+                }
+            });
+        } else {
+            console.log(`📝 Appending new date ${dateStr} (${count} followers)`);
+            const dataToUpload = isNewSheet ? [['Date', 'Followers'], rowData] : [rowData];
+            await this.sheets.spreadsheets.values.append({
+                spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+                range: `'${sheetName}'!A:B`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: dataToUpload }
             });
         }
 
-        await this.sheets.spreadsheets.values.batchUpdate({
-            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            resource: {
-                valueInputOption: 'RAW',
-                data: batchData
-            }
-        });
-
-        console.log(`✅ Row inserted at row ${insertRow}!`);
-    }
-
-    async formatNumberColumns() {
-        const sheetId = await this.getSheetId();
-        const startRow = this.sheetConfig.DATA_START_ROW - 1; // 0-indexed
-
-        const requests = [
-            // Column B: Facebook Followers (number with comma)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 1, endColumnIndex: 2 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
-                    fields: 'userEnteredFormat.numberFormat'
+        // Apply number format to column B
+        const sheetId = await this.getSheetId(sheetName);
+        if (sheetId !== null) {
+            const requests = [
+                {
+                    repeatCell: {
+                        range: { sheetId, startColumnIndex: 1, endColumnIndex: 2 },
+                        cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0' } } },
+                        fields: 'userEnteredFormat.numberFormat'
+                    }
                 }
-            },
-            // Column C: Facebook Growth (number with comma)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 2, endColumnIndex: 3 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            // Column D: Facebook Growth Rate (percentage)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 3, endColumnIndex: 4 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'PERCENT', pattern: '0.00%' } } },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            // Column F: TikTok Followers (number with comma)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 5, endColumnIndex: 6 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            // Column G: TikTok Growth (number with comma)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 6, endColumnIndex: 7 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            // Column H: TikTok Growth Rate (percentage)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 7, endColumnIndex: 8 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'PERCENT', pattern: '0.00%' } } },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            // Column J: TikTok Likes (number with comma)
-            {
-                repeatCell: {
-                    range: { sheetId, startRowIndex: startRow, endRowIndex: 1000, startColumnIndex: 9, endColumnIndex: 10 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            }
-        ];
-
-        await this.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            resource: { requests }
-        });
-    }
-
-    /**
-     * Clean up junk rows (rows after last valid data that have garbage data)
-     */
-    async cleanupJunkRows() {
-        const lastRow = await this.findLastDataRow();
-        if (!lastRow) return;
-
-        const sheetId = await this.getSheetId();
-        const nextRow = lastRow.rowNumber + 1;
-
-        // Read rows after last data to check for junk
-        const rows = await this.readSheet(`A${nextRow}:I${nextRow + 20}`, 'FORMATTED_VALUE');
-        if (rows.length === 0) return;
-
-        // Count rows that have any content (junk)
-        let junkCount = 0;
-        for (const row of rows) {
-            if (row.some(cell => cell !== '' && cell !== undefined && cell !== null)) {
-                junkCount++;
-            } else {
-                break; // Stop at first fully empty row
-            }
+            ];
+            await this.sheets.spreadsheets.batchUpdate({ spreadsheetId: this.sheetConfig.SPREADSHEET_ID, resource: { requests } });
         }
-
-        if (junkCount === 0) return;
-
-        console.log(`🧹 Cleaning up ${junkCount} junk rows starting from row ${nextRow}...`);
-
-        // Clear the junk rows
-        await this.sheets.spreadsheets.values.clear({
-            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
-            range: `${this.sheetConfig.SHEET_NAME}!A${nextRow}:I${nextRow + junkCount - 1}`
-        });
-
-        console.log('✅ Junk rows cleaned!');
+        
+        return true;
+    }
+    
+    async syncFacebookFollowers(date, fbCount) {
+        return await this.syncPlatformFollowers('Facebook', this.sheetConfig.FB_SHEET_NAME, date, fbCount);
     }
 
-    async getSheetId() {
-        if (this._sheetId !== null) return this._sheetId;
+    async syncTiktokFollowers(date, tiktokCount) {
+        return await this.syncPlatformFollowers('TikTok', this.sheetConfig.TIKTOK_SHEET_NAME, date, tiktokCount);
+    }
+    
+    // Kept for backward compatibility if any old logic needed it
+    async getLatestDate() {
+        // Find latest date from Facebook tab
+        const checkRows = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
+            range: `'${this.sheetConfig.FB_SHEET_NAME}'!A:A`,
+            valueRenderOption: 'FORMATTED_VALUE'
+        }).catch(() => ({ data: { values: [] } }));
+        const existingData = checkRows.data.values || [];
+        if (existingData.length > 1) {
+            return existingData[existingData.length - 1][0];
+        }
+        return null;
+    }
+
+    async getSheetId(sheetName) {
+        if (this._sheetIds[sheetName] !== undefined) return this._sheetIds[sheetName];
 
         const res = await this.sheets.spreadsheets.get({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
             fields: 'sheets.properties'
         });
 
-        const sheet = res.data.sheets.find(
-            s => s.properties.title === this.sheetConfig.SHEET_NAME
-        );
+        const sheet = res.data.sheets.find(s => s.properties.title === sheetName);
+        if (!sheet) return null;
 
-        this._sheetId = sheet ? sheet.properties.sheetId : 0;
-        return this._sheetId;
+        this._sheetIds[sheetName] = sheet.properties.sheetId;
+        return this._sheetIds[sheetName];
     }
 }
 

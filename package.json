@@ -13,11 +13,14 @@
     "fb:import": "node src/facebook/index.js --import",
     "fb:csv": "node src/facebook/index.js --csv",
     "sns:followers": "node src/sns/index.js",
+    "sns:followers:simple": "node src/sns/simple-index.js",
     "zalo": "node src/zalo/index.js",
     "zalo:login": "node src/zalo/login.js",
     "zalo:hourly": "node src/zalo/hourly_stats.js",
+    "zalo:dau": "node src/zalo/daily_dau.js",
     "zalo:ads": "node src/zalo/ads_index.js",
     "zalo:ads:sync": "node src/zalo/ads_sync_csv.js",
+    "zalo:oa": "node src/zalo/oa_followers_only.js",
     "snapshot": "node src/shared/db.js",
     "snapshot:tiktok": "node src/shared/db.js tiktok",
     "snapshot:fb": "node src/shared/db.js facebook",
@@ -39,6 +42,7 @@
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "csv-parse": "^6.1.0",
+    "dotenv": "^17.4.1",
     "googleapis": "^171.3.0",
     "node-cron": "^3.0.3",
     "playwright": "^1.58.1"

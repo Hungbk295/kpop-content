@@ -22,6 +22,18 @@ class ZaloSheetsManager {
                 DATA_START_ROW: 2
             };
             this.spreadsheetId = config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID;
+        } else if (this.type === 'dau') {
+            this.sheetConfig = {
+                SHEET_NAME: config.ZALO.DAU_STATS.SHEET_NAME,
+                DATA_START_ROW: 2
+            };
+            this.spreadsheetId = config.ZALO.HOURLY_STATS.SECONDARY_SPREADSHEET_ID; // same secondary spreadsheet
+        } else if (this.type === 'oa_followers') {
+            this.sheetConfig = {
+                SHEET_NAME: config.ZALO.OA_FOLLOWERS.SHEET_NAME,
+                DATA_START_ROW: 2
+            };
+            this.spreadsheetId = config.ZALO.OA_FOLLOWERS.SECONDARY_SPREADSHEET_ID;
         }
     }
 
@@ -64,7 +76,7 @@ class ZaloSheetsManager {
     async readSheet(range) {
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadsheetId,
-            range: `${this.sheetConfig.SHEET_NAME}!${range}`
+            range: `'${this.sheetConfig.SHEET_NAME}'!${range}`
         });
 
         return response.data.values || [];
@@ -73,7 +85,7 @@ class ZaloSheetsManager {
     async updateCells(updates) {
         // updates format: [{ range: 'A1', value: 'test' }, ...]
         const data = updates.map(u => ({
-            range: `${this.sheetConfig.SHEET_NAME}!${u.range}`,
+            range: `'${this.sheetConfig.SHEET_NAME}'!${u.range}`,
             values: [[u.value]]
         }));
 
@@ -99,6 +111,8 @@ class ZaloSheetsManager {
 
         const cols = this.sheetConfig.COLUMNS;
         const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
+
+        await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
 
         const sheetId = await this.getSheetId();
 
@@ -139,11 +153,11 @@ class ZaloSheetsManager {
                 valueInputOption: 'USER_ENTERED',
                 data: [
                     {
-                        range: `${this.sheetConfig.SHEET_NAME}!B${DATA_START_ROW}:H${DATA_START_ROW}`,
+                        range: `'${this.sheetConfig.SHEET_NAME}'!B${DATA_START_ROW}:H${DATA_START_ROW}`,
                         values: [miniAppRowData]
                     },
                     {
-                        range: `${this.sheetConfig.SHEET_NAME}!K${DATA_START_ROW}:R${DATA_START_ROW}`,
+                        range: `'${this.sheetConfig.SHEET_NAME}'!K${DATA_START_ROW}:R${DATA_START_ROW}`,
                         values: [oaRowData]
                     }
                 ]
@@ -271,6 +285,193 @@ class ZaloSheetsManager {
         return { updatedCount: updates.length, appendedCount: newRows.length };
     }
 
+    async syncDailyDAU(dailyData) {
+        console.log(`\n📊 Syncing Daily DAU stats to sheet...`);
+
+        await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
+
+        // Read existing times from column A to avoid duplicates and allow updates
+        const existingRows = await this.readSheet('A:A');
+        
+        // Map time -> row index (1-based for A1 notation)
+        const timeToRowIndex = {};
+        for (let i = 0; i < existingRows.length; i++) {
+            if (existingRows[i][0]) {
+                const timeStr = existingRows[i][0].toString().trim();
+                timeToRowIndex[timeStr] = i + 1;
+            }
+        }
+
+        const updates = [];
+        const newRows = [];
+
+        for (const item of dailyData) {
+            const rowIdx = timeToRowIndex[item.timeStr];
+            if (rowIdx) {
+                // Time exists, UPDATE the count (Column B)
+                updates.push({
+                    range: `B${rowIdx}`,
+                    value: item.count
+                });
+            } else {
+                // Time doesn't exist, APPEND
+                newRows.push([item.timeStr, item.count]);
+            }
+        }
+
+        console.log(`📝 Found ${updates.length} existing dates to update, and ${newRows.length} new dates to append.`);
+
+        // 1. Update existing counts
+        if (updates.length > 0) {
+            const data = updates.map(u => ({
+                range: `'${this.sheetConfig.SHEET_NAME}'!${u.range}`,
+                values: [[u.value]]
+            }));
+            await this.sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: this.spreadsheetId,
+                resource: {
+                    valueInputOption: 'USER_ENTERED',
+                    data: data
+                }
+            });
+            console.log(`✅ Updated ${updates.length} existing DAU counts in place.`);
+        }
+
+        // 2. Append new rows
+        if (newRows.length > 0) {
+            const isNewSheet = existingRows.length === 0;
+            const dataToUpload = isNewSheet ? [['Date', 'DAU'], ...newRows] : newRows;
+
+            await this.sheets.spreadsheets.values.append({
+                spreadsheetId: this.spreadsheetId,
+                range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: {
+                    values: dataToUpload
+                }
+            });
+            console.log(`✅ Appended ${newRows.length} new daily stats.`);
+        }
+
+        // 3. Force formatting & SORT BY TIME
+        const sheetId = await this.getSheetIdForSpreadsheet(this.spreadsheetId, this.sheetConfig.SHEET_NAME);
+        
+        const requests = [
+            // Force number format on column B
+            {
+                repeatCell: {
+                    range: {
+                        sheetId,
+                        startColumnIndex: 1, // Column B
+                        endColumnIndex: 2
+                    },
+                    cell: {
+                        userEnteredFormat: {
+                            numberFormat: {
+                                type: 'NUMBER',
+                                pattern: '0'
+                            }
+                        }
+                    },
+                    fields: 'userEnteredFormat.numberFormat'
+                }
+            },
+            // Sort sheet by Column A (Time) Ascending
+            {
+                sortRange: {
+                    range: {
+                        sheetId: sheetId,
+                        startRowIndex: 1 // Keep header untouched
+                    },
+                    sortSpecs: [
+                        {
+                            dimensionIndex: 0, // Column A
+                            sortOrder: 'ASCENDING'
+                        }
+                    ]
+                }
+            }
+        ];
+
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            resource: { requests }
+        });
+
+        console.log(`✅ Sorted the sheet chronologically!`);
+        return { updatedCount: updates.length, appendedCount: newRows.length };
+    }
+
+    async syncOAFollowers(oaData) {
+        console.log(`\n📊 Syncing OA Followers to standalone sheet tab...`);
+
+        await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
+
+        // Uses yesterday's date as the metric corresponds to yesterday's fetching
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateStr = `${yesterday.getDate().toString().padStart(2, '0')}/${(yesterday.getMonth() + 1).toString().padStart(2, '0')}/${yesterday.getFullYear()}`;
+
+        const existingRows = await this.readSheet('A:A');
+        
+        const timeToRowIndex = {};
+        for (let i = 0; i < existingRows.length; i++) {
+            if (existingRows[i][0]) {
+                const timeStr = existingRows[i][0].toString().trim();
+                timeToRowIndex[timeStr] = i + 1;
+            }
+        }
+
+        const isNewSheet = existingRows.length === 0;
+        const rowData = [dateStr, oaData.total_follower, oaData.new_follower, oaData.unfollower];
+        const rowIdx = timeToRowIndex[dateStr];
+
+        if (rowIdx) {
+            console.log(`📝 Updating existing date ${dateStr} at row ${rowIdx}`);
+            await this.sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: this.spreadsheetId,
+                resource: {
+                    valueInputOption: 'USER_ENTERED',
+                    data: [
+                        { range: `'${this.sheetConfig.SHEET_NAME}'!B${rowIdx}`, values: [[oaData.total_follower]] },
+                        { range: `'${this.sheetConfig.SHEET_NAME}'!C${rowIdx}`, values: [[oaData.new_follower]] },
+                        { range: `'${this.sheetConfig.SHEET_NAME}'!D${rowIdx}`, values: [[oaData.unfollower]] }
+                    ]
+                }
+            });
+        } else {
+            console.log(`📝 Appending new date ${dateStr}`);
+            const dataToUpload = isNewSheet ? [['Date', 'Total Follower', 'New Follower', 'Unfollower'], rowData] : [rowData];
+            await this.sheets.spreadsheets.values.append({
+                spreadsheetId: this.spreadsheetId,
+                range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: dataToUpload }
+            });
+        }
+
+        const sheetId = await this.getSheetIdForSpreadsheet(this.spreadsheetId, this.sheetConfig.SHEET_NAME);
+        const requests = [
+            {
+                repeatCell: {
+                    range: { sheetId, startColumnIndex: 1, endColumnIndex: 4 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
+                    fields: 'userEnteredFormat.numberFormat'
+                }
+            },
+            {
+                sortRange: {
+                    range: { sheetId: sheetId, startRowIndex: 1 },
+                    sortSpecs: [{ dimensionIndex: 0, sortOrder: 'ASCENDING' }]
+                }
+            }
+        ];
+
+        await this.sheets.spreadsheets.batchUpdate({ spreadsheetId: this.spreadsheetId, resource: { requests } });
+        console.log(`✅ OA Followers sync completed!`);
+        return { updatedCount: rowIdx ? 1 : 0, appendedCount: rowIdx ? 0 : 1 };
+    }
+
     async getSheetIdForSpreadsheet(spreadsheetId, sheetName) {
         const res = await this.sheets.spreadsheets.get({
             spreadsheetId,
@@ -282,6 +483,8 @@ class ZaloSheetsManager {
 
     async clearSheet() {
         console.log(`\n🧹 Clearing tab "${this.sheetConfig.SHEET_NAME}" (values and formatting)...`);
+        
+        await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
         
         const clearSpreadsheet = async (spreadsheetId) => {
             // 1. Clear values

@@ -1,9 +1,9 @@
 ═══════════════════════════════════════════
   FACEBOOK - Log Session
-  2026-03-30T03:55:35.069Z
+  2026-04-08T02:38:58.280Z
 ═══════════════════════════════════════════
 
-📝 Logging to: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/logs/facebook.txt
+📝 Logging to: /Users/nhan/Tidesquare/kpop-content/logs/facebook.txt
 ═══════════════════════════════════════════
    K-POP Facebook Metrics Crawler
    (Export Data Flow)
@@ -11,137 +11,25 @@
 
 📌 Step 1/6: Initializing browser...
 Launching browser with persistent profile...
-User data dir: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/browser-data-fb
+User data dir: /Users/nhan/Tidesquare/kpop-content/browser-data-fb
 Browser ready!
 
 📌 Step 2/6: Navigating to Facebook Content Library...
 Navigating to Facebook Content Library...
-Facebook Content Library loaded!
-
-📌 Step 3/6: Using Export Data flow...
-Starting Export Data flow...
-Step 1: Looking for Export data button...
-Clicked Export data button
-Step 2: Looking for Create new data report...
-Clicked Create new data report
-Step 3: Clicking Select date range...
-Clicked Select date range
-Step 3b: Selecting "This year"...
-Selected "This year: Jan 1 - Mar 30"
-Step 4: Looking for "Create report (.csv)" button...
-Clicked "Create report (.csv)"
-Step 5: Waiting 5s before navigating to Report History...
-Step 6: Navigating to Report History...
-Step 7: Waiting for first report to have download link...
-Download link found!
-Step 8: Downloading CSV...
-   Download URL: https://l.facebook.com/l.php?u=https%3A%2F%2Fscontent.fhan18-1.fna.fbcdn.net%2Fm1%2Fv%2Ft6%2FAn-HZ3f...
-Waiting for download to start...
-Downloaded: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/Mar-01-2026_Mar-29-2026_Content_Publish time_Summary_904666889111242.csv
-
-📌 Step 4/6: Parsing CSV: /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/Mar-01-2026_Mar-29-2026_Content_Publish time_Summary_904666889111242.csv
-CSV Headers: [
-  "Post ID",
-  "Page ID",
-  "Page name",
-  "Title",
-  "Duration (sec)",
-  "Publish time",
-  "Permalink",
-  "Post type",
-  "Data comment",
-  "Date",
-  "Comments",
-  "Distribution",
-  "Impressions",
-  "Interactions",
-  "Net follows",
-  "Reactions",
-  "Saves",
-  "Shares",
-  "Viewers",
-  "Views",
-  "Average Seconds viewed",
-  "Seconds viewed"
-]
-Column mapping: {
-  "title": 3,
-  "date": 5,
-  "type": 7,
-  "views": 19,
-  "reach": 12,
-  "engagement": 15,
-  "comments": 10,
-  "shares": 17,
-  "url": 6
-}
-Parsed 189 posts from CSV
-💾 Backup saved to /Users/jc/Documents/TQCoding/KPopNow/kpop-content/data/facebook_metrics_2026-03-30.json
-
-📌 Step 5/6: Compare & merge with DB snapshot...
-🔐 Initializing Google Sheets API for Facebook...
-✅ Google Sheets API ready!
-💾 DB snapshot: 299 entries, title cache: 297 entries
-
-🔄 Compare & Merge (facebook): 189 crawled vs 299 in DB
-  📋 Existing (skip AI, metrics only): 189
-  🤖 New (run AI for title+describe): 0
-  📦 Old posts from snapshot (not in crawl): 110
-  ✅ Merged: 299 existing + 0 new = 299 total
-
-📌 Step 6/6: Replacing Google Sheet and saving DB snapshot...
-🗑️  Cleared sheet from row 3
-📝 Wrote 299 rows to sheet
-
-📊 Sorting by DATE OF PUBLICATION...
-✅ Sorted by DATE (newest first)
-
-🔢 Renumbering 299 rows (oldest=1, newest=299)...
-✅ Renumbered: Row 3 (newest) = 299, Row 301 (oldest) = 1
-✅ Facebook sheet replaced!
-💾 Title cache updated: 189 entries
-💾 DB snapshot updated: 299 entries
-
-📌 Step 6b: Syncing to Additional Tabs...
-
-🔄 Syncing metrics to 3 additional tabs...
-📊 Loaded 598 lookup entries (URLs + postIds) from Daily Update FB
-
-  📋 Syncing to "Promoting ZALO OA and MINI APP"...
-    📝 Tab has 3 rows
-    🔍 Sample URLs from tab: [
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid02DcfKvPuHCN5LYxRyadbRKWTu3QjiNpAFMQtf74sit4Ypz3VAUJ5MqL5JR4FhjDNnl",
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid0ytQoKymaHpiYsSndBtoVYP2AJB9xrifi2mFHERBcYfHSYUhvJ41Wg2DaoaiAL6TUl",
-  "https://www.facebook.com/reel/706632882385414"
-]
-  ⚠️  No matches found in "Promoting ZALO OA and MINI APP"
-
-  📋 Syncing to "JAN Online Event"...
-    📝 Tab has 5 rows
-    🔍 Sample URLs from tab: [
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid0239Lv9MpaXhsWNQyA9hpgzhJbmLDXCPAeXnNLsbAt9MXbKTSdhHo8xiLmSLPUASRVl",
-  "https://www.facebook.com/reel/884982820846285",
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid0Zdg7zBPW847GpWK1AWsAyqMYgSXEDVHcvHLCirZnswecScxto4kD2nCKp9F7DKDSl"
-]
-  ⚠️  No matches found in "JAN Online Event"
-
-  📋 Syncing to "Ambassador SS1"...
-    📝 Tab has 6 rows
-    🔍 Sample URLs from tab: [
-  "https://www.facebook.com/kpopnow.vn/posts/pfbid02ZaqNZgsCZ5QZneTkfVpZPcpvcWRBZynw6arg2Rr6EKZjsamLN1KjRUX7ZrxgAMVNl",
-  "https://post.oa.zalo.me/d?id=dc42feec30a9d9f780b8&pageId=2551520430888728337",
-  "https://www.facebook.com/reel/723714640604987"
-]
-  ⚠️  No matches found in "Ambassador SS1"
-
-✅ Sync complete: 0/3 tabs, 0 total updates
-
+Please login to Facebook...
+Waiting for you to login (max 5 minutes)...
+[ERROR] 
 ═══════════════════════════════════════════
-   Summary
-═══════════════════════════════════════════
-📊 Parsed from CSV: 189 posts
-📋 Total in sheet: 299 posts (incl. old from snapshot)
-🔄 Synced: 0 additional tabs (0 updates)
-
-✅ Done!
-Browser closed
+[ERROR] ❌ ERROR
+[ERROR] ═══════════════════════════════════════════
+[ERROR] Message: page.waitForURL: Timeout 300000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/professional_dashboard/**" until "load"
+============================================================
+[ERROR] 
+Stack: page.waitForURL: Timeout 300000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "**/professional_dashboard/**" until "load"
+============================================================
+    at FacebookCrawler.navigateToContentLibrary (/Users/nhan/Tidesquare/kpop-content/src/facebook/crawler.js:48:29)
+    at async main (/Users/nhan/Tidesquare/kpop-content/src/facebook/index.js:50:9)

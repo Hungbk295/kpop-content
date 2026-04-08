@@ -49,10 +49,8 @@ async function main() {
         const latestDate = await sheetsManager.getLatestDate();
 
         if (latestDate === todayStr) {
-            console.log(`⚠️ Today (${todayStr}) already has an entry!`);
-            console.log('Skipping update to avoid duplicates.');
-            console.log('💡 Delete the latest row manually if you want to re-run today.');
-            return;
+            console.log(`⚠️ Today (${todayStr}) already exists in FB tab.`);
+            console.log('Proceeding anyway to update the latest stats with fresh data.');
         }
 
         console.log(`✅ No entry for ${todayStr}, proceeding...`);
@@ -111,9 +109,8 @@ async function main() {
 
         // Step 7: Update sheet
         console.log('\n📌 Step 7/7: Updating Google Sheet...');
-        await sheetsManager.cleanupJunkRows();
-        await sheetsManager.appendFollowerRow(today, fbFollowers, tiktokFollowers, tiktokLikes);
-        await sheetsManager.formatNumberColumns();
+        await sheetsManager.syncFacebookFollowers(today, fbFollowers);
+        await sheetsManager.syncTiktokFollowers(today, tiktokFollowers);
 
         console.log('\n═══════════════════════════════════════════');
         console.log('   Summary');

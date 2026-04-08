@@ -103,24 +103,10 @@ module.exports = {
     },
 
     // SNS Followers tracking config
-    // Actual sheet layout:
-    // A=Update date (d/m), B=Facebook, C=DOD, D=Growth Rate(%), E=7-Day Change
-    // F=Tiktok Followers, G=DOD, H=Growth Rate(%), I=7-Day Change
     SNS_FOLLOWERS: {
-        SPREADSHEET_ID: process.env.SNS_SPREADSHEET_ID || '1ejbA0DMJKpfO9yVuBAHXsZQoToIi_Eb4f4RW5nCTaLE',
-        SHEET_NAME: process.env.SNS_SHEET_NAME || 'SNS Followers',
-        COLUMNS: {
-            UPDATE_DATE: 'A',
-            FACEBOOK_FOLLOWERS: 'B',
-            FACEBOOK_GROWTH: 'C',
-            FACEBOOK_GROWTH_RATE: 'D',
-            FB_7DAY_CHANGE: 'E',
-            TIKTOK_FOLLOWERS: 'F',
-            TIKTOK_GROWTH: 'G',
-            TIKTOK_GROWTH_RATE: 'H',
-            TIKTOK_7DAY_CHANGE: 'I'
-        },
-        DATA_START_ROW: parseInt(process.env.SNS_DATA_START_ROW, 10) || 6
+        SPREADSHEET_ID: process.env.SNS_SPREADSHEET_ID || '1DGJSHPFxtiwlhsT4nz83RPUq9MeAdPuY3G_NSK3EeO0',
+        FB_SHEET_NAME: process.env.SNS_FB_SHEET_NAME || 'Facebook Followers',
+        TIKTOK_SHEET_NAME: process.env.SNS_TIKTOK_SHEET_NAME || 'Tiktok Followers',
     },
 
     // Zalo Ads config
@@ -144,6 +130,7 @@ module.exports = {
     ZALO: {
         // Dedicated persistent profile for the Zalo flow
         USER_DATA_DIR: process.env.ZALO_USER_DATA_DIR || './browser-data-zalo',
+        OA_USER_DATA_DIR: process.env.ZALO_OA_USER_DATA_DIR || './browser-data-zalo-oa',
 
         // Zalo MiniApp URL
         MINIAPP_URL: process.env.ZALO_MINIAPP_URL || 'https://miniapp.zaloplatforms.com/miniapp/1774671493144848971/statistic/overview',
@@ -186,6 +173,19 @@ module.exports = {
             SECONDARY_SPREADSHEET_ID: process.env.ZALO_SECONDARY_SPREADSHEET_ID || '1DGJSHPFxtiwlhsT4nz83RPUq9MeAdPuY3G_NSK3EeO0',
             // Default to false for safety to prevent accidental clearing of the sheet
             ALLOW_RESET: process.env.ZALO_ALLOW_RESET === 'true'
+        },
+
+        // Daily DAU Stats config
+        DAU_STATS: {
+            SHEET_NAME: 'DAU', // User specifically requested "DAU"
+            API_URL: 'https://miniapp.zaloplatforms.com/app/get-stats',
+            ALLOW_RESET: true
+        },
+
+        // OA Followers daily standalone log
+        OA_FOLLOWERS: {
+            SHEET_NAME: 'OA Followers',
+            SECONDARY_SPREADSHEET_ID: process.env.ZALO_SECONDARY_SPREADSHEET_ID || '1DGJSHPFxtiwlhsT4nz83RPUq9MeAdPuY3G_NSK3EeO0',
         }
     }
 };

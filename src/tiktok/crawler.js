@@ -223,11 +223,9 @@ class TikTokCrawler {
         console.log('📁 User data dir:', userDataDir);
 
         this.context = await chromium.launchPersistentContext(userDataDir, {
-            headless: false,
-            viewport: { width: 1400, height: 900 },
-            args: [
-                '--disable-blink-features=AutomationControlled',
-            ]
+            headless: true,
+            viewport: { width: 1280, height: 800 },
+            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         });
         
         this.page = this.context.pages()[0] || await this.context.newPage();
@@ -372,25 +370,16 @@ class TikTokCrawler {
 
         await this.page.waitForTimeout(3000);
 
-        // Use XPath to find follower count element
+        // Find follower count element using data attribute
         const followerCount = await this.page.evaluate(() => {
-            // XPath: //*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[2]
-            const xpath = '//*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[2]';
-            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            const followerElement = result.singleNodeValue;
+            const followerElement = document.querySelector('[data-e2e="followers-count"]');
 
             if (!followerElement) {
                 return null;
             }
 
             const text = followerElement.textContent.trim();
-            // Pattern: "1392Followers" or "1.2KFollowers"
-
-            // Verify text contains "Followers"
-            if (!text.includes('Followers')) {
-                return null;
-            }
-
+            
             // Extract number (support K, M, B suffix)
             const match = text.match(/(\d+\.?\d*[KMB]?)/i);
             if (match) {
@@ -414,19 +403,15 @@ class TikTokCrawler {
         // Assumes we're already on the profile page from scrapeFollowerCount()
         await this.page.waitForTimeout(1000);
 
-        // Use XPath to find likes count element
+        // Find likes count element using data attribute
         const likesCount = await this.page.evaluate(() => {
-            // XPath: //*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[3]/strong
-            const xpath = '//*[@id="main-content-others_homepage"]/div/div[1]/div/div[2]/div[3]/h3/div[3]/strong';
-            const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            const likesElement = result.singleNodeValue;
+            const likesElement = document.querySelector('[data-e2e="likes-count"]');
 
             if (!likesElement) {
                 return null;
             }
 
             const text = likesElement.textContent.trim();
-            // Pattern: "1392" or "1.2K"
 
             // Extract number (support K, M, B suffix)
             const match = text.match(/(\d+\.?\d*[KMB]?)/i);
