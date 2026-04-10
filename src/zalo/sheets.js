@@ -181,12 +181,19 @@ class ZaloSheetsManager {
         for (let i = 0; i < existingRows.length; i++) {
             if (existingRows[i][0]) {
                 let timeStr = existingRows[i][0].toString().trim();
-                // Normalize DD/MM/YYYY into YYYY-MM-DD
+                // Normalize DD/MM/YYYY HH:mm into YYYY-MM-DD HH:mm
                 if (timeStr.includes('/')) {
-                    const parts = timeStr.split('/');
+                    const spaceSplit = timeStr.split(' ');
+                    const datePart = spaceSplit[0];
+                    const timePart = spaceSplit.length > 1 ? ` ${spaceSplit.slice(1).join(' ')}` : '';
+                    const parts = datePart.split('/');
                     if (parts.length === 3) {
-                        timeStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                        timeStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}${timePart}`;
                     }
+                }
+                // Fallback normalizer in case API returns slightly different spacing (e.g. 09:00:00 -> 09:00)
+                if (timeStr.split(':').length === 3) {
+                    timeStr = timeStr.substring(0, timeStr.lastIndexOf(':')); // strip seconds
                 }
                 timeToRowIndex[timeStr] = i + 1;
             }
@@ -260,24 +267,6 @@ class ZaloSheetsManager {
                             numberFormat: {
                                 type: 'NUMBER',
                                 pattern: '0'
-                            }
-                        }
-                    },
-                    fields: 'userEnteredFormat.numberFormat'
-                }
-            },
-            {
-                repeatCell: {
-                    range: {
-                        sheetId,
-                        startColumnIndex: 0, // Column A
-                        endColumnIndex: 1
-                    },
-                    cell: {
-                        userEnteredFormat: {
-                            numberFormat: {
-                                type: 'DATE',
-                                pattern: 'dd/mm/yyyy'
                             }
                         }
                     },
