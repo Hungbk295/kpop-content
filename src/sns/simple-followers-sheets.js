@@ -54,9 +54,10 @@ class SimpleSNSFollowersManager {
     }
 
     formatDate(date) {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}`;
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     async appendFollowerData(date, platform, followers) {
@@ -75,7 +76,13 @@ class SimpleSNSFollowersManager {
         
         const existingData = checkRows.data.values || [];
         if (existingData.length > 0) {
-            const lastRowVal = existingData[existingData.length - 1][0];
+            let lastRowVal = existingData[existingData.length - 1][0];
+            if (lastRowVal && lastRowVal.includes('/')) {
+                const parts = lastRowVal.split('/');
+                if (parts.length === 3) {
+                    lastRowVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+            }
             if (lastRowVal === dateStr) {
                 console.log(`⚠️ Today (${dateStr}) already exists at the bottom of "${sheetName}". Skipping...`);
                 return;
@@ -87,7 +94,7 @@ class SimpleSNSFollowersManager {
         await this.sheets.spreadsheets.values.append({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
             range: `${sheetName}!A:B`,
-            valueInputOption: 'RAW',
+            valueInputOption: 'USER_ENTERED',
             insertDataOption: 'INSERT_ROWS',
             resource: {
                 values: [[dateStr, followerCount]]
@@ -99,13 +106,22 @@ class SimpleSNSFollowersManager {
         await this.sheets.spreadsheets.batchUpdate({
             spreadsheetId: this.sheetConfig.SPREADSHEET_ID,
             resource: {
-                requests: [{
-                    repeatCell: {
-                        range: { sheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 1, endColumnIndex: 2 },
-                        cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0' } } },
-                        fields: 'userEnteredFormat.numberFormat'
+                requests: [
+                    {
+                        repeatCell: {
+                            range: { sheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 1, endColumnIndex: 2 },
+                            cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0' } } },
+                            fields: 'userEnteredFormat.numberFormat'
+                        }
+                    },
+                    {
+                        repeatCell: {
+                            range: { sheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 1 },
+                            cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'dd/mm/yyyy' } } },
+                            fields: 'userEnteredFormat.numberFormat'
+                        }
                     }
-                }]
+                ]
             }
         });
 

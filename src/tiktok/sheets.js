@@ -110,6 +110,28 @@ class GoogleSheetsManager {
             }
         }));
 
+        // Format Date column F (index 5)
+        requests.push({
+            repeatCell: {
+                range: {
+                    sheetId,
+                    startRowIndex: startRow - 1,
+                    endRowIndex: endRow,
+                    startColumnIndex: 5,
+                    endColumnIndex: 6
+                },
+                cell: {
+                    userEnteredFormat: {
+                        numberFormat: {
+                            type: 'DATE',
+                            pattern: 'dd/mm/yyyy'
+                        }
+                    }
+                },
+                fields: 'userEnteredFormat.numberFormat'
+            }
+        });
+
         await this.sheets.spreadsheets.batchUpdate({
             spreadsheetId: config.GOOGLE_SHEETS.SPREADSHEET_ID,
             resource: { requests }
@@ -252,6 +274,9 @@ class GoogleSheetsManager {
         };
         const parseDate = (dateStr) => {
             if (!dateStr) return 0;
+            const yMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (yMatch) return new Date(yMatch[1], parseInt(yMatch[2], 10) - 1, parseInt(yMatch[3], 10)).getTime();
+            
             const match = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
             if (!match) return 0;
             return monthOrder[match[1]] * 100 + parseInt(match[2], 10);
@@ -267,6 +292,10 @@ class GoogleSheetsManager {
         // Prefix with ' to force Google Sheets to treat as text (not date serial)
         const formatDate = (dateStr) => {
             if (!dateStr) return '';
+            
+            // If already YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
             const months = {
                 'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4,
                 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8,
@@ -276,8 +305,17 @@ class GoogleSheetsManager {
             if (match) {
                 const day = parseInt(match[2], 10);
                 const month = months[match[1]];
-                return `'${day}/${month}`;
+                const currentMonth = new Date().getMonth() + 1;
+                let year = new Date().getFullYear();
+                if (month > currentMonth + 1) year -= 1; // Basic heuristic for last year
+                const dStr = day.toString().padStart(2, '0');
+                const mStr = month.toString().padStart(2, '0');
+                return `${year}-${mStr}-${dStr}`;
             }
+            
+            const yMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (yMatch) return `${yMatch[1]}-${yMatch[2].padStart(2, '0')}-${yMatch[3].padStart(2, '0')}`;
+            
             return dateStr;
         };
 
@@ -373,15 +411,25 @@ class GoogleSheetsManager {
 
         console.log(`🔄 Sorting ${rows.length} rows by date (newest first)...`);
 
-        // Parse "d/m" date string to sortable number (month * 100 + day)
+        // Parse date string to sortable number (time in ms)
         const parseDateValue = (dateStr) => {
             if (!dateStr) return 0;
             const str = String(dateStr).replace(/^'/, ''); // strip leading '
-            const match = str.match(/^(\d{1,2})\/(\d{1,2})$/);
-            if (!match) return 0;
-            const day = parseInt(match[1], 10);
-            const month = parseInt(match[2], 10);
-            return month * 100 + day; // e.g. 22/2 -> 222, 26/1 -> 126
+            
+            let match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            if (match) return new Date(match[1], parseInt(match[2], 10) - 1, parseInt(match[3], 10)).getTime();
+            
+            match = str.match(/^(\d{1,2})\/(\d{1,2})$/);
+            if (match) {
+                const day = parseInt(match[1], 10);
+                const month = parseInt(match[2], 10);
+                const currentMonth = new Date().getMonth() + 1;
+                let year = new Date().getFullYear();
+                if (month > currentMonth + 1) year -= 1;
+                return new Date(year, month - 1, day).getTime();
+            }
+            
+            return new Date(str).getTime() || 0;
         };
 
         // Sort descending by date (column F = index 5)

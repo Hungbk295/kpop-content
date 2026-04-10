@@ -198,7 +198,7 @@ class ZaloAdsSheetsManager {
         const sortedLetters = Object.keys(groups).sort();
         console.log(`   📍 Detected groups: ${sortedLetters.join(', ')}`);
 
-        // Detect date from non-total rows (DD/MM/YYYY → M/D/YYYY)
+        // Detect date from non-total rows (DD/MM/YYYY → YYYY-MM-DD)
         let dateStr;
         const nonTotalRow = dataRows.find(row =>
             row[colIdx.breakdown] !== 'Tổng' && row[colIdx.id] !== 'Tổng'
@@ -206,12 +206,12 @@ class ZaloAdsSheetsManager {
         if (nonTotalRow) {
             const parts = nonTotalRow[colIdx.breakdown].split('/');
             if (parts.length === 3) {
-                dateStr = `${parseInt(parts[1])}/${parseInt(parts[0])}/${parts[2]}`;
+                dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
         }
         if (!dateStr) {
             const now = new Date();
-            dateStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
+            dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         }
         console.log(`   📅 Date: ${dateStr}`);
 
@@ -324,9 +324,8 @@ class ZaloAdsSheetsManager {
             return { insertedCount: 0 };
         }
 
-        // Convert YYYY-MM-DD → M/D/YYYY
-        const [y, m, d] = dateStr.split('-').map(Number);
-        const displayDate = `${m}/${d}/${y}`;
+        // Retain YYYY-MM-DD format
+        const displayDate = dateStr;
         console.log(`   📅 Date: ${displayDate}`);
 
         const metrics = [

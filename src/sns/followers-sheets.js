@@ -47,9 +47,10 @@ class SNSFollowersManager {
     }
 
     formatDate(date) {
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        return `${day}/${month}`;
+        const y = date.getFullYear();
+        const m = (date.getMonth() + 1).toString().padStart(2, '0');
+        const d = date.getDate().toString().padStart(2, '0');
+        return `${y}-${m}-${d}`;
     }
 
     async syncPlatformFollowers(platformName, sheetName, date, followersCount) {
@@ -69,7 +70,14 @@ class SNSFollowersManager {
         const timeToRowIndex = {};
         for (let i = 0; i < existingData.length; i++) {
             if (existingData[i][0]) {
-                const timeStr = existingData[i][0].toString().trim();
+                let timeStr = existingData[i][0].toString().trim();
+                // Google sheets returns DD/MM/YYYY visually, normalize to YYYY-MM-DD for comparison
+                if (timeStr.includes('/')) {
+                    const parts = timeStr.split('/');
+                    if (parts.length === 3) {
+                        timeStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
                 timeToRowIndex[timeStr] = i + 1; // 1-based index
             }
         }
@@ -108,6 +116,13 @@ class SNSFollowersManager {
                     repeatCell: {
                         range: { sheetId, startColumnIndex: 1, endColumnIndex: 2 },
                         cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0' } } },
+                        fields: 'userEnteredFormat.numberFormat'
+                    }
+                },
+                {
+                    repeatCell: {
+                        range: { sheetId, startColumnIndex: 0, endColumnIndex: 1 },
+                        cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'dd/mm/yyyy' } } },
                         fields: 'userEnteredFormat.numberFormat'
                     }
                 }

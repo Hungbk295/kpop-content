@@ -112,7 +112,8 @@ const SCRAPE_SCRIPT = `
             // Tìm date pattern
             const dateIndex = texts.findIndex(t =>
                 /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d/.test(t) ||
-                /^\\d{1,2}\\/\\d{1,2}/.test(t)
+                /^\\d{1,2}\\/\\d{1,2}/.test(t) ||
+                /^\\d{4}-\\d{1,2}-\\d{1,2}/.test(t)
             );
             const date = dateIndex >= 0 ? texts[dateIndex] : '';
 

@@ -94,7 +94,7 @@ class FacebookSheetsManager {
 
         const requests = [];
 
-        // Format Date column as "dd/mm"
+        // Format Date column as "dd/mm/yyyy"
         requests.push({
             repeatCell: {
                 range: {
@@ -108,7 +108,7 @@ class FacebookSheetsManager {
                     userEnteredFormat: {
                         numberFormat: {
                             type: 'DATE',
-                            pattern: 'dd/mm'
+                            pattern: 'dd/mm/yyyy'
                         }
                     }
                 },

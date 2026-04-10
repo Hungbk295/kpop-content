@@ -184,8 +184,8 @@ async function main() {
             const m = (date.getMonth() + 1).toString().padStart(2, '0');
             const y = date.getFullYear();
             
-            // Sheet format DD/MM/YYYY
-            const timeStr = `${d}/${m}/${y}`;
+            // Sheet format YYYY-MM-DD
+            const timeStr = `${y}-${m}-${d}`;
             
             return {
                 timeStr,

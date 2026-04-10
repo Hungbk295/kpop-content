@@ -107,7 +107,7 @@ class ZaloSheetsManager {
 
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const dateStr = `${yesterday.getDate().toString().padStart(2, '0')}/${(yesterday.getMonth() + 1).toString().padStart(2, '0')}/${yesterday.getFullYear()}`;
+        const dateStr = `${yesterday.getFullYear()}-${(yesterday.getMonth() + 1).toString().padStart(2, '0')}-${yesterday.getDate().toString().padStart(2, '0')}`;
 
         const cols = this.sheetConfig.COLUMNS;
         const DATA_START_ROW = this.sheetConfig.DATA_START_ROW;
@@ -180,7 +180,14 @@ class ZaloSheetsManager {
         const timeToRowIndex = {};
         for (let i = 0; i < existingRows.length; i++) {
             if (existingRows[i][0]) {
-                const timeStr = existingRows[i][0].toString().trim();
+                let timeStr = existingRows[i][0].toString().trim();
+                // Normalize DD/MM/YYYY into YYYY-MM-DD
+                if (timeStr.includes('/')) {
+                    const parts = timeStr.split('/');
+                    if (parts.length === 3) {
+                        timeStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
                 timeToRowIndex[timeStr] = i + 1;
             }
         }
@@ -259,19 +266,22 @@ class ZaloSheetsManager {
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
-            // Sort sheet by Column A (Time) Ascending
             {
-                sortRange: {
+                repeatCell: {
                     range: {
-                        sheetId: sheetId,
-                        startRowIndex: 1 // Keep header untouched
+                        sheetId,
+                        startColumnIndex: 0, // Column A
+                        endColumnIndex: 1
                     },
-                    sortSpecs: [
-                        {
-                            dimensionIndex: 0, // Column A
-                            sortOrder: 'ASCENDING'
+                    cell: {
+                        userEnteredFormat: {
+                            numberFormat: {
+                                type: 'DATE',
+                                pattern: 'dd/mm/yyyy'
+                            }
                         }
-                    ]
+                    },
+                    fields: 'userEnteredFormat.numberFormat'
                 }
             }
         ];
@@ -281,7 +291,7 @@ class ZaloSheetsManager {
             resource: { requests }
         });
 
-        console.log(`✅ Forced numeric formatting and sorted the sheet chronologically!`);
+        console.log(`✅ Forced numeric formatting for hourly stats!`);
         return { updatedCount: updates.length, appendedCount: newRows.length };
     }
 
@@ -297,7 +307,14 @@ class ZaloSheetsManager {
         const timeToRowIndex = {};
         for (let i = 0; i < existingRows.length; i++) {
             if (existingRows[i][0]) {
-                const timeStr = existingRows[i][0].toString().trim();
+                let timeStr = existingRows[i][0].toString().trim();
+                // Normalize DD/MM/YYYY into YYYY-MM-DD
+                if (timeStr.includes('/')) {
+                    const parts = timeStr.split('/');
+                    if (parts.length === 3) {
+                        timeStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
                 timeToRowIndex[timeStr] = i + 1;
             }
         }
@@ -376,19 +393,22 @@ class ZaloSheetsManager {
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
-            // Sort sheet by Column A (Time) Ascending
             {
-                sortRange: {
+                repeatCell: {
                     range: {
-                        sheetId: sheetId,
-                        startRowIndex: 1 // Keep header untouched
+                        sheetId,
+                        startColumnIndex: 0, // Column A
+                        endColumnIndex: 1
                     },
-                    sortSpecs: [
-                        {
-                            dimensionIndex: 0, // Column A
-                            sortOrder: 'ASCENDING'
+                    cell: {
+                        userEnteredFormat: {
+                            numberFormat: {
+                                type: 'DATE',
+                                pattern: 'dd/mm/yyyy'
+                            }
                         }
-                    ]
+                    },
+                    fields: 'userEnteredFormat.numberFormat'
                 }
             }
         ];
@@ -398,7 +418,7 @@ class ZaloSheetsManager {
             resource: { requests }
         });
 
-        console.log(`✅ Sorted the sheet chronologically!`);
+        console.log(`✅ Formatting applied!`);
         return { updatedCount: updates.length, appendedCount: newRows.length };
     }
 
@@ -407,10 +427,9 @@ class ZaloSheetsManager {
 
         await this.ensureTabExists(this.sheetConfig.SHEET_NAME);
 
-        // Uses yesterday's date as the metric corresponds to yesterday's fetching
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const dateStr = `${yesterday.getDate().toString().padStart(2, '0')}/${(yesterday.getMonth() + 1).toString().padStart(2, '0')}/${yesterday.getFullYear()}`;
+        const dateStr = `${yesterday.getFullYear()}-${(yesterday.getMonth() + 1).toString().padStart(2, '0')}-${yesterday.getDate().toString().padStart(2, '0')}`;
 
         const existingRows = await this.readSheet('A:A');
         
@@ -423,7 +442,7 @@ class ZaloSheetsManager {
         }
 
         const isNewSheet = existingRows.length === 0;
-        const rowData = [dateStr, oaData.total_follower, oaData.new_follower, oaData.unfollower];
+        const rowData = [dateStr, oaData.total_follower];
         const rowIdx = timeToRowIndex[dateStr];
 
         if (rowIdx) {
@@ -433,15 +452,13 @@ class ZaloSheetsManager {
                 resource: {
                     valueInputOption: 'USER_ENTERED',
                     data: [
-                        { range: `'${this.sheetConfig.SHEET_NAME}'!B${rowIdx}`, values: [[oaData.total_follower]] },
-                        { range: `'${this.sheetConfig.SHEET_NAME}'!C${rowIdx}`, values: [[oaData.new_follower]] },
-                        { range: `'${this.sheetConfig.SHEET_NAME}'!D${rowIdx}`, values: [[oaData.unfollower]] }
+                        { range: `'${this.sheetConfig.SHEET_NAME}'!B${rowIdx}`, values: [[oaData.total_follower]] }
                     ]
                 }
             });
         } else {
             console.log(`📝 Appending new date ${dateStr}`);
-            const dataToUpload = isNewSheet ? [['Date', 'Total Follower', 'New Follower', 'Unfollower'], rowData] : [rowData];
+            const dataToUpload = isNewSheet ? [['Date', 'Total Follower'], rowData] : [rowData];
             await this.sheets.spreadsheets.values.append({
                 spreadsheetId: this.spreadsheetId,
                 range: `'${this.sheetConfig.SHEET_NAME}'!A1`,
@@ -454,15 +471,16 @@ class ZaloSheetsManager {
         const requests = [
             {
                 repeatCell: {
-                    range: { sheetId, startColumnIndex: 1, endColumnIndex: 4 },
-                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
+                    range: { sheetId, startColumnIndex: 1, endColumnIndex: 2 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0' } } },
                     fields: 'userEnteredFormat.numberFormat'
                 }
             },
             {
-                sortRange: {
-                    range: { sheetId: sheetId, startRowIndex: 1 },
-                    sortSpecs: [{ dimensionIndex: 0, sortOrder: 'ASCENDING' }]
+                repeatCell: {
+                    range: { sheetId, startColumnIndex: 0, endColumnIndex: 1 },
+                    cell: { userEnteredFormat: { numberFormat: { type: 'DATE', pattern: 'dd/mm/yyyy' } } },
+                    fields: 'userEnteredFormat.numberFormat'
                 }
             }
         ];

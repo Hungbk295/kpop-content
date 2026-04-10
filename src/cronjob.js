@@ -50,9 +50,12 @@ async function runPipeline() {
   results.facebook = await runCommand('npm run fb', 'Facebook');
   
   // The explicitly requested metrics commands
-  results.sns = await runCommand('npm run sns:followers', 'SNS Followers (FB & TikTok)');
+  results.sns = await runCommand('npm run sns:followers', 'SNS Followers (FB & TikTok Main)');
+  results.snsSimple = await runCommand('npm run sns:followers:simple', 'SNS Followers (FB & TikTok Simple)');
   results.zaloOA = await runCommand('npm run zalo:oa', 'Zalo OA Followers');
   results.zaloDAU = await runCommand('npm run zalo:dau', 'Zalo MiniApp DAU');
+  // Optional: run Zalo Ads if requested
+  // results.zaloAds = await runCommand('npm run zalo:ads', 'Zalo Ads');
 
   const endTime = Date.now();
   const duration = ((endTime - startTime) / 1000).toFixed(2);
@@ -61,7 +64,8 @@ async function runPipeline() {
   log('Pipeline Summary:');
   log(`- TikTok: ${results.tiktok ? '✓ Success' : '✗ Failed'}`);
   log(`- Facebook: ${results.facebook ? '✓ Success' : '✗ Failed'}`);
-  log(`- SNS Followers: ${results.sns ? '✓ Success' : '✗ Failed'}`);
+  log(`- SNS Followers Main: ${results.sns ? '✓ Success' : '✗ Failed'}`);
+  log(`- SNS Followers Simple: ${results.snsSimple ? '✓ Success' : '✗ Failed'}`);
   log(`- Zalo OA Followers: ${results.zaloOA ? '✓ Success' : '✗ Failed'}`);
   log(`- Zalo DAU: ${results.zaloDAU ? '✓ Success' : '✗ Failed'}`);
   log(`Total duration: ${duration}s`);
